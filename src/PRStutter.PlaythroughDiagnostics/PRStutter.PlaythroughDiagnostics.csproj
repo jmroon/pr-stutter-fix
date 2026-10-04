@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- The installed BepInEx host uses .NET 6; the build SDK is separate. -->
+    <TargetFramework>net6.0</TargetFramework>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <GameDirectory Condition="'$(GameDirectory)' == ''">D:\SteamLibrary\steamapps\common\FINAL FANTASY VI PR</GameDirectory>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../PRStutter.TimingExperiment/PRStutter.TimingExperiment.csproj" Private="false" />
+    <Reference Include="UnityEngine.IMGUIModule" HintPath="$(GameDirectory)\BepInEx\interop\UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="Assembly-CSharp" HintPath="$(GameDirectory)\BepInEx\interop\Assembly-CSharp.dll" Private="false" />
+    <Reference Include="UnityEngine.InputLegacyModule" HintPath="$(GameDirectory)\BepInEx\interop\UnityEngine.InputLegacyModule.dll" Private="false" />
+    <Reference Include="BepInEx.Core" HintPath="$(GameDirectory)\BepInEx\core\BepInEx.Core.dll" Private="false" />
+    <Reference Include="BepInEx.Unity.IL2CPP" HintPath="$(GameDirectory)\BepInEx\core\BepInEx.Unity.IL2CPP.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Runtime" HintPath="$(GameDirectory)\BepInEx\core\Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="Il2Cppmscorlib" HintPath="$(GameDirectory)\BepInEx\interop\Il2Cppmscorlib.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(GameDirectory)\BepInEx\interop\UnityEngine.CoreModule.dll" Private="false" />
+  </ItemGroup>
+  <Target Name="ValidateGameReferences" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(GameDirectory)\BepInEx\core\BepInEx.Unity.IL2CPP.dll')" Text="BepInEx IL2CPP not found. Pass /p:GameDirectory=the game directory." />
+    <Error Condition="!Exists('$(GameDirectory)\BepInEx\interop\UnityEngine.CoreModule.dll')" Text="Generated interop assemblies not found. BepInEx must have completed initialization at least once." />
+  </Target>
+</Project>

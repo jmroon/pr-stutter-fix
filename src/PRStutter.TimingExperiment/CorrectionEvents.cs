@@ -46,3 +46,14 @@ public sealed class ObservationChannel<T>
         public void Dispose() { if (ReferenceEquals(_owner._observers[_index], _observer)) _owner._observers[_index] = null; }
     }
 }
+
+public readonly record struct CorrectionSnapshot(long Qpc, string Context, bool Enabled,
+    bool Timing, bool Pacing, bool Smoothing, string TimingReason, string PacingReason, string SmoothingReason);
+
+// Public read-only status and value events for optional diagnostics. No telemetry dependency.
+public static class CorrectionStatus
+{
+    public static bool Available { get; internal set; }
+    public static CorrectionSnapshot Current { get; internal set; }
+    public static ObservationChannel<CorrectionSnapshot> Changes { get; } = new();
+}

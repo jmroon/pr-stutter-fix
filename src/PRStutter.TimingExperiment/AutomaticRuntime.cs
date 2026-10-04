@@ -8,16 +8,6 @@ using UnityEngine;
 
 namespace PRStutter.TimingExperiment;
 
-public readonly record struct CorrectionSnapshot(long Qpc, string Context, bool Enabled,
-    bool Timing, bool Pacing, bool Smoothing, string TimingReason, string PacingReason, string SmoothingReason);
-
-// Public read-only status and value events for optional diagnostics. No telemetry dependency.
-public static class CorrectionStatus
-{
-    public static CorrectionSnapshot Current { get; internal set; }
-    public static ObservationChannel<CorrectionSnapshot> Changes { get; } = new();
-}
-
 internal static class AutomaticRuntime
 {
     private sealed class Feature : ITestFeature
@@ -47,6 +37,7 @@ internal static class AutomaticRuntime
     public static bool Enabled => _enabled?.Value ?? false;
     public static void Initialize(ConfigFile config)
     {
+        CorrectionStatus.Available = true;
         _enabled = config.Bind("Corrections", "Enabled", true, "Automatic field corrections. F4 toggles this setting. Unsupported components suspend independently.");
         _timing = config.Bind("Corrections", "Timing", true, "Preserve tile time only for inspected manual movement.");
         _pacing = config.Bind("Corrections", "Pacing", true, "Scoped display-paced VSync during supported field control.");
