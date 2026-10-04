@@ -33,6 +33,7 @@ public sealed class Plugin : BasePlugin
     public override bool Unload()
     {
         TestPanel.Stop("unload"); Timing.WaitForSave();
+        if (!Timing.CleanupComplete) { Log.LogWarning("Unload deferred until timing hooks detach."); return false; }
         if (_driver != null) UnityEngine.Object.Destroy(_driver);
         return true;
     }
@@ -79,6 +80,7 @@ internal static class Timing
     private static bool _footAllowsNext;
     private static long _deadline;
     public static bool Active => _active;
+    public static bool CleanupComplete => !_hooks && _pendingStop == null;
     public static double Remaining => _active ? Math.Max(0, (_deadline - Stopwatch.GetTimestamp()) / (double)Stopwatch.Frequency) : 0;
     public static string LastStop { get; private set; } = "not started";
     public static int Carried => _carried;
@@ -332,6 +334,11 @@ internal static class Timing
     private static void RequestStop(string reason) { _active = false; LastStop = reason; _pendingStop ??= reason; }
     public static void Fail(Exception e) { RequestStop("fault: " + e); }
     public static void FinishPending() { if (_pendingStop is { } reason) Stop(reason); }
+    public static void StopForRuntime(string reason)
+    {
+        Stop(reason);
+        if (!CleanupComplete) throw new InvalidOperationException("Timing hooks still owned; cleanup will retry.");
+    }
     public static void Stop(string reason)
     {
         bool hadSession = _active || _hooks;

@@ -24,7 +24,7 @@ internal static class AutomaticRuntime
         public void Start(long deadline) => _start(deadline);
         public void Stop(string reason) => _stop(reason);
     }
-    private static readonly AutomaticFeature TimingFeature = new(new Feature("Timing", () => Timing.Active, () => Timing.LastStop, Timing.Start, Timing.Stop));
+    private static readonly AutomaticFeature TimingFeature = new(new Feature("Timing", () => Timing.Active, () => Timing.LastStop, Timing.Start, Timing.StopForRuntime));
     private static readonly AutomaticFeature PacingFeature = new(new Feature("Pacing", () => ExperimentControls.PacingActive, () => ExperimentControls.PacingStopReason, ExperimentControls.StartPacing, ExperimentControls.StopPacing));
     private static readonly AutomaticFeature SmoothingFeature = new(new Feature("Smoothing", () => ExperimentControls.SmoothingActive, () => ExperimentControls.SmoothingStopReason, ExperimentControls.StartSmoothing, ExperimentControls.StopSmoothing));
     private static readonly FollowReadiness Follow = new();
@@ -65,12 +65,16 @@ internal static class AutomaticRuntime
                 }
             var player = following?.TargetEntity.TryCast<FieldPlayer>();
             bool manual = false;
+            FieldController? field = null;
+            int controllerId = 0;
             if (player != null && player.gameObject.activeInHierarchy && (int)player.moveState == 0 &&
                 !player.IsAutoMoving && !player.IsRiging && !player.pauseMoving)
                 foreach (var c in UnityEngine.Object.FindObjectsOfType<FieldPlayerKeyController>())
-                    if (c.isActiveAndEnabled && c.InputEnable && c.fieldPlayer != null && c.fieldPlayer.Pointer == player.Pointer) manual = true;
+                    if (c.isActiveAndEnabled && c.InputEnable && c.fieldPlayer != null && c.fieldPlayer.Pointer == player.Pointer) {
+                        manual = true; controllerId = c.GetInstanceID(); field = c.playerHandle?.TryCast<FieldController>();
+                    }
             bool available = manual && Application.isFocused && Time.timeScale == 1 && ExperimentControls.Ready;
-            string identity = $"follow={following?.GetInstanceID() ?? 0};player={player?.GetInstanceID() ?? 0};manual={available};display={Screen.width}x{Screen.height}";
+            string identity = $"follow={following?.GetInstanceID() ?? 0};player={player?.GetInstanceID() ?? 0};controller={controllerId};area={field?.currentAreaId ?? -1};mapRenderer={field?.mainViewMapRenderer?.Pointer ?? IntPtr.Zero};manual={available};display={Screen.width}x{Screen.height}";
             if (identity != _identity) { Follow.Reset(); _identity = identity; }
             if (available && player != null && following != null) {
                 var p = player.transform.position; var c = following.camera.transform.position;

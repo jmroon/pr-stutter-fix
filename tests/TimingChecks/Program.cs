@@ -84,11 +84,14 @@ CombinedRunChecks.Run();
 DiagonalChecks.Run();
 ObserverChecks.Run();
 AutomaticChecks.Run();
+TransitionChecks.Run();
 
 // A separate gameplay experiment has a separate, explicit mutation surface.
 using var stream = File.OpenRead(args[0]);
 using var pe = new PEReader(stream);
 var reader = pe.GetMetadataReader();
+foreach (var handle in reader.AssemblyReferences)
+    Check(!reader.GetString(reader.GetAssemblyReference(handle).Name).Contains("Diagnostics"), "Correction assembly depends on optional diagnostics");
 bool timerSetter=false, positionSetter=false, inputRequest=false, arrivalStart=false, arrivalUpdate=false;
 foreach (var h in reader.MethodDefinitions)
     Check((reader.GetMethodDefinition(h).Attributes & MethodAttributes.PinvokeImpl)==0,"Unreviewed native import");

@@ -35,6 +35,10 @@ try {
     writer.TrySave(new { Evidence="two" }); writer.Wait();
     writer.TrySave(new { Evidence="three" }); writer.Wait();
     Check(Directory.GetFiles(directory).Length==2 && writer.Status.Contains("budget"),"File quota failed");
+    string bytesDirectory = Path.Combine(directory,"byte-budget");
+    var byteLimited = new CaptureWriter(bytesDirectory, 8);
+    byteLimited.TrySave(new { Evidence="larger-than-budget" }); byteLimited.Wait();
+    Check(Directory.GetFiles(bytesDirectory).Length==0 && byteLimited.Status.Contains("budget"),"Byte quota failed");
     string blocked = Path.Combine(directory,"not-a-directory"); File.WriteAllText(blocked,"keep");
     var failing = new CaptureWriter(blocked); failing.TrySave(new { Evidence="fail" }); failing.Wait();
     Check(failing.Status.StartsWith("save failed") && File.ReadAllText(blocked)=="keep","Write error escaped or overwrote unrelated file");

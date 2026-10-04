@@ -32,18 +32,20 @@ internal static class Playthrough
     private static int _untrackedCameras, _untrackedEntities, _coverageOverflow;
     private static string _coverageKey = "waiting";
     private static CorrectionSnapshot _coverageState;
-    private static bool _recording;
+    private static bool _recording, _faulted;
     public static string Status => _status;
     public static void Initialize(ConfigFile config)
     {
         _enabled = config.Bind("Debug", "Enabled", false, "F2 toggles bounded playthrough recording independently of corrections. F3 saves surrounding context. No GPU readback.");
-        _movementSubscription = CorrectionEvents.Movement.Subscribe(OnMovement);
-        _statusSubscription = CorrectionStatus.Changes.Subscribe(OnState);
+        _movementSubscription = CorrectionEvents.Movement.Subscribe(row => { try { OnMovement(row); } catch (Exception e) { Fault(e); } });
+        _statusSubscription = CorrectionStatus.Changes.Subscribe(state => { try { OnState(state); } catch (Exception e) { Fault(e); } });
         if (_enabled.Value) Begin();
     }
     public static void Keys()
     {
-        if (Input.GetKeyDown(KeyCode.F2)) _enabled.Value = !_enabled.Value;
+        bool toggle = Input.GetKeyDown(KeyCode.F2);
+        if (_faulted && !toggle) return;
+        if (toggle) { _faulted = false; _enabled.Value = !_enabled.Value; }
         if (_enabled.Value && !_recording) Begin();
         if (!_enabled.Value && _recording) End();
         if (_recording && Input.GetKeyDown(KeyCode.F3)) _incidents.Trigger("manual-marker", Stopwatch.GetTimestamp(), true);
@@ -201,9 +203,11 @@ internal static class Playthrough
     }
     public static void Fault(Exception e)
     {
-        _recording = false; _enabled.Value = false;
+        _recording = false; _faulted = true;
         _status = "Diagnostics stopped: " + e.Message;
+        try { _enabled.Value = false; } catch { } // Even a read-only config directory cannot escape into gameplay.
         _motion = null; _movement = null; _costs = null; _states = null;
+        Cameras.Clear(); Entities.Clear();
     }
     public static void Shutdown()
     {

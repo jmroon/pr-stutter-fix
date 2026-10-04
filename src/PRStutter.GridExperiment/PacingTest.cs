@@ -74,7 +74,7 @@ internal static class PacingTest
     private static bool Valid() => Application.isFocused && Time.timeScale == 1 &&
         _player != null && _following != null && _following.TargetEntity != null &&
         _following.TargetEntity.Pointer == _player.Pointer && _following.camera != null && _following.camera.isActiveAndEnabled &&
-        (int)_player.moveState == 0 && !_player.IsAutoMoving && !_player.IsRiging &&
+        _player.gameObject.activeInHierarchy && (int)_player.moveState == 0 && !_player.IsAutoMoving && !_player.IsRiging && !_player.pauseMoving &&
         Controllers.Exists(c => c != null && c.isActiveAndEnabled && c.InputEnable && c.fieldPlayer != null && c.fieldPlayer.Pointer == _player.Pointer);
 
     public static void Stop(string reason)

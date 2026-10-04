@@ -1395,3 +1395,35 @@ present. It can still refuse pure battle scenes without that target. A passive
 render-layout snapshot is the next evidence needed before broadening camera
 support; do not simply remove the guards. No plugin behavior changed in this
 verification turn.
+
+### Automatic lifecycle and optional playthrough diagnostics
+
+The working timed algorithms are now wrapped in independent automatic lifetimes:
+Timing 0.5.0 and Grid 0.8.0. Movement carry policy, arrival admission, motion residual
+and VisualMotion algorithms are unchanged from public baseline 8de6aa7. Corrections
+no longer depend on a recording buffer or its capacity. F4 toggles automatic mode;
+unsupported components suspend independently and recover when their observed
+context changes. Camera-follow readiness requires observed matching movement.
+
+Playthrough Diagnostics 0.1.0 is a separate optional plugin depending on value-only
+observation/status APIs; the fix has no diagnostics assembly dependency. F2 toggles
+bounded debug recording, F3 marks an incident. Cached camera/entity sampling works
+while corrections are suspended, including camera-only evidence outside field
+movement. Automatic incident candidates, deduplication, recording/file budgets,
+coverage summaries and measured observer overhead are described in docs/runtime.md.
+No GPU readback or new native diagnostic hooks were introduced.
+
+Four implementation checkpoints separate recording ownership, automatic lifecycle,
+optional diagnostics, and transition/deployment verification. Offline validation
+includes 37 Python tests, cardinal/diagonal conservation checks, restoration and
+mutation audits, 800 simulated lifecycle transitions, recorder fault isolation,
+rolling window/dedup policies and writer failure/quota tests. The unchanged timed
+algorithms have the earlier live evidence. The new automatic lifecycle, debug UI,
+actual menu/cutscene/battle resumption and debug overhead still need live checks.
+A successful model test is not a claim that those game scenes have been exercised.
+
+Deploy-Runtime.ps1 builds/tests the matching set, preserves previous plugin DLLs,
+verifies installed hashes and writes a local deployment/rollback manifest. See
+README.md and docs/runtime.md for current controls; earlier investigation controls
+and timer limits are historical. This build has not yet been installed; installation
+requires the user's approval following an automatic approval-review rejection.

@@ -266,7 +266,7 @@ internal sealed class Session
     {
         if (!Application.isFocused || _player == null || _following == null || _following.TargetEntity == null ||
             _following.TargetEntity.Pointer != _player.Pointer || (int)_player.moveState != 0 ||
-            _player.IsAutoMoving || _player.IsRiging ||
+            _player.IsAutoMoving || _player.IsRiging || _player.pauseMoving ||
             !_controllers.Exists(c => c != null && c.isActiveAndEnabled && c.InputEnable && c.fieldPlayer != null && c.fieldPlayer.Pointer == _player.Pointer))
             throw new InvalidOperationException("Ordinary manual field control required; control/state changed.");
         var offset = _following.camera.transform.position - _player.transform.position;

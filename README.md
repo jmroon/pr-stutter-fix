@@ -1,30 +1,30 @@
 # Pixel Remaster stutter investigation
 
 Experimental Windows modding project investigating movement judder in **Final
-Fantasy VI Pixel Remaster**. The current combined test preserves unused movement
-time between tiles, increases the field rendering grid, and enables display-paced
-VSync. Straight and diagonal field walking have passed targeted live tests.
+Fantasy VI Pixel Remaster**. The current development build automatically manages
+three independent corrections: preserving unused tile-movement time, rendering
+field motion on a finer grid, and scoped display-paced VSync.
 
-**This is a development prototype, not a finished full-game fix.** CRT must be off;
-cutscenes, battles and camera boundaries are not yet supported by the combined
-test. F4 enables a bounded 15-second test, with a status panel and automatic
-restoration when supported conditions no longer hold.
+**This remains a prototype.** The underlying cardinal/diagonal walking algorithms
+have targeted live evidence. The new automatic lifecycle and playthrough debug
+mode pass offline checks but still require in-game transition and overhead checks.
+Unknown cinematic/battle/camera layouts suspend unsupported corrections.
 
-The current components are Diagnostics 0.3.1, Grid Experiment 0.7.0 and Timing
-Experiment 0.4.0. Older experiments remain as investigation history; their
-deployment scripts are not part of the current setup. An automatic scene-aware
-fix with optional, independent playthrough diagnostics is planned, not implemented.
+Current components: **Timing 0.5.0**, **Grid 0.8.0**, optional **Playthrough
+Diagnostics 0.1.0**. F4 enables/disables automatic corrections; F2 toggles debug
+recording; F3 marks an incident. Smoothing requires CRT off. Debug recording is
+optional and cannot gate correction behavior.
 
-This repository contains project source, tests and investigation notes. Game
-assemblies/assets, generated interop assemblies, native dumps, recordings,
-downloaded tools and build outputs are excluded. Building requires your own game
-installation with BepInEx and generated interop assemblies. References to
-`artifacts/` in these notes describe local evidence not included in this repository.
+**[Runtime controls, architecture, installation, rollback and verification](docs/runtime.md)**
 
-See [Quick start](#quick-start) for the local toolchain and
-[Presentation measurement](#presentation-measurement) for current test controls,
-build/deployment commands and verification limits. Detailed findings are in
-[the investigation log](docs/investigation.md).
+The repository contains source, tests and investigation notes. Game assemblies,
+assets, generated interop assemblies, native dumps, recordings, downloaded tools
+and build outputs stay local. Building requires your own game installation with
+BepInEx and generated interop assemblies. References to `artifacts/` describe local
+evidence not included in this repository.
+
+See [Quick start](#quick-start) for the local toolchain. The history below records
+prior experiments and their old controls; use the runtime guide for current use.
 
 ## Investigation history
 
@@ -95,13 +95,14 @@ python -m venv .tools/plot-python
 ./scripts/Test.ps1 -PythonExe ./.tools/plot-python/Scripts/python.exe
 ./scripts/Test-TimingExperiment.ps1
 ./scripts/Test-GridExperiment.ps1
+./scripts/Test-PlaythroughDiagnostics.ps1
 ```
 
 Pass `-GameDirectory 'PATH-TO-GAME'` to the test scripts for a different installation.
 The offline checks verify policies, conservation, restoration and recorded-data
 analysis. They do not establish full-game compatibility or final display smoothness.
 
-## Current test configuration
+## Original investigation setup
 
 FFPR Fix was disabled on October 2, 2026, at the user's request. Its DLL was moved
 outside the game to `artifacts/disabled-plugins/FFPR-Fix-20261002-152825-653/FFPR_Fix.dll`.
@@ -245,7 +246,7 @@ not installed by this initial setup.
 Generated game-derived outputs, tool binaries, local paths/configuration snapshots,
 and build outputs are ignored by Git. Do not distribute the game's DLL or metadata.
 
-## Presentation measurement
+## Historical presentation measurement
 
 **Tile Timing Test 0.4.0 + Grid 0.7.0** provide a **Start all three / Stop all three**
 panel button and **F4** for a coordinated 15-second
