@@ -6,17 +6,22 @@ using UnityEngine;
 
 namespace PRStutter.PlaythroughDiagnostics;
 
-[BepInPlugin("local.prstutter.playthrough", "PR Stutter Playthrough Diagnostics", "0.1.1")]
-[BepInDependency("local.prstutter.timing", "0.5.1")]
+[BepInPlugin("local.prstutter.playthrough", "PR Stutter Playthrough Diagnostics", "0.2.0")]
+[BepInDependency("local.prstutter.timing", "0.6.0")]
 public sealed class Plugin : BasePlugin
 {
+#if PR_FFIV
+    private const string ExpectedGame = "FFIV";
+#else
+    private const string ExpectedGame = "FFVI";
+#endif
     private Driver? _driver;
     public override void Load()
     {
-        if (!CorrectionStatus.Available) { Log.LogWarning("Supported correction runtime unavailable; diagnostics disabled."); return; }
+        if (!CorrectionStatus.Available || CorrectionStatus.Game != ExpectedGame) { Log.LogWarning("Supported correction runtime unavailable; diagnostics disabled."); return; }
         Playthrough.Initialize(Config);
         _driver = AddComponent<Driver>();
-        Log.LogInfo("Optional playthrough diagnostics ready. F10 toggles recording; F11 marks visible jitter. No GPU readback or native hooks. F8 remains the old standalone capture.");
+        Log.LogInfo("Optional playthrough diagnostics ready. F10 toggles recording; F11 marks visible jitter. No GPU readback or native hooks. F8 is a separate optional FFVI-only legacy capture.");
     }
     public override bool Unload()
     {

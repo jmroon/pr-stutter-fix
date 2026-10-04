@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Security.Cryptography;
 using BepInEx;
 using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
@@ -14,21 +13,21 @@ using UnityEngine;
 
 namespace PRStutter.GridExperiment;
 
-[BepInPlugin("local.prstutter.grid", "PR Stutter Grid Test", "0.8.1")]
+[BepInPlugin("local.prstutter.grid", "PR Stutter Grid Test", "0.9.0")]
 public sealed class Plugin : BasePlugin
 {
     private Driver? _driver;
     public override void Load()
     {
-        if (!Matches("GameAssembly.dll", "0029a22ed933aa3b6ea3b1290060502267f514d61ba6e6619308d844557f2ffd") ||
-            !Matches("FINAL FANTASY VI_Data/il2cpp_data/Metadata/global-metadata.dat", "f50d9d1ff84f8033b8acbdc6845ab3a0f2793dd253c36a4a7d212303980844dd"))
+        if (!PRStutter.GridExperiment.GameProfile.MatchesInstalledBuild(GameProfile.Id))
         { Log.LogError("Unsupported build; grid test disabled."); return; }
+        Log.LogInfo("Game profile: " + GameProfile.Id);
         Test.Log = Log;
         ClassInjector.RegisterTypeInIl2Cpp<GridPass>();
         PixelCapture.Register();
         _driver = AddComponent<Driver>();
         ExperimentControls.Ready = true;
-        Test.Note("0.8.1 ready, OFF by default. F9: automatic corrections when the timing plugin is loaded. Standalone-only controls: F6 pixel diagnostic; F7 pacing (90s); F9 4x / F10 8x smoothing (15s). CRT OFF. F6 disabled during a combined test. Ordinary cardinal and diagonal manual walking only.");
+        Test.Note("0.9.0 ready, OFF by default. F9: automatic corrections when the timing plugin is loaded. Standalone-only controls: F6 pixel diagnostic; F7 pacing (90s); F9 4x / F10 8x smoothing (15s). CRT OFF. F6 disabled during a combined test. Ordinary cardinal and diagonal manual walking only.");
     }
     public override bool Unload()
     {
@@ -38,12 +37,6 @@ public sealed class Plugin : BasePlugin
         Test.Stop("unload"); Test.DisposeStopped();
         if (_driver != null) UnityEngine.Object.Destroy(_driver);
         return true;
-    }
-    private static bool Matches(string path, string hash)
-    {
-        using var stream = File.OpenRead(Path.Combine(Paths.GameRootPath, path));
-        using var sha = SHA256.Create();
-        return Convert.ToHexString(sha.ComputeHash(stream)).Equals(hash, StringComparison.OrdinalIgnoreCase);
     }
 }
 public sealed class Driver : MonoBehaviour
@@ -266,7 +259,7 @@ internal sealed class Session
     {
         if (!Application.isFocused || _player == null || _following == null || _following.TargetEntity == null ||
             _following.TargetEntity.Pointer != _player.Pointer || (int)_player.moveState != 0 ||
-            _player.IsAutoMoving || _player.IsRiging || _player.pauseMoving ||
+            _player.IsAutoMoving || PRStutter.GridExperiment.GameProfile.TransportActive(_player) || _player.pauseMoving ||
             !_controllers.Exists(c => c != null && c.isActiveAndEnabled && c.InputEnable && c.fieldPlayer != null && c.fieldPlayer.Pointer == _player.Pointer))
             throw new InvalidOperationException("Ordinary manual field control required; control/state changed.");
         var offset = _following.camera.transform.position - _player.transform.position;

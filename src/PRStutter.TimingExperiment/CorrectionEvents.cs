@@ -53,6 +53,7 @@ public readonly record struct CorrectionSnapshot(long Qpc, string Context, bool 
 // Public read-only status and value events for optional diagnostics. No telemetry dependency.
 public static class CorrectionStatus
 {
+    public static string Game { get; internal set; } = "unknown";
     public static bool Available { get; internal set; }
     public static CorrectionSnapshot Current { get; internal set; }
     public static ObservationChannel<CorrectionSnapshot> Changes { get; } = new();

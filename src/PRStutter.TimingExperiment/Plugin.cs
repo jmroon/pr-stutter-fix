@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Security.Cryptography;
 using BepInEx;
 using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
@@ -12,23 +11,33 @@ using Last.Map;
 using UnityEngine;
 using Sample = PRStutter.TimingExperiment.MovementSample;
 using Row = PRStutter.TimingExperiment.MovementObservation;
+#if PR_FFIV
+using ArrivalIterator = Last.Map.FootMonitoring._UpdateMonitor_d__36;
+#else
+using ArrivalIterator = Last.Map.FootMonitoring._UpdateMonitor_d__41;
+#endif
 
 namespace PRStutter.TimingExperiment;
 
-[BepInPlugin("local.prstutter.timing", "PR Stutter Tile Timing Test", "0.5.1")]
-[BepInDependency("local.prstutter.grid", "0.8.1")]
+[BepInPlugin("local.prstutter.timing", "PR Stutter Tile Timing Test", "0.6.0")]
+[BepInDependency("local.prstutter.grid", "0.9.0")]
 public sealed class Plugin : BasePlugin
 {
+#if PR_FFIV
+    private const string ExpectedGame = "FFIV";
+#else
+    private const string ExpectedGame = "FFVI";
+#endif
     private Driver? _driver;
     public override void Load()
     {
-        if (!Matches("GameAssembly.dll", "0029a22ed933aa3b6ea3b1290060502267f514d61ba6e6619308d844557f2ffd") ||
-            !Matches("FINAL FANTASY VI_Data/il2cpp_data/Metadata/global-metadata.dat", "f50d9d1ff84f8033b8acbdc6845ab3a0f2793dd253c36a4a7d212303980844dd"))
+        if (!PRStutter.GridExperiment.GameProfile.MatchesInstalledBuild(ExpectedGame))
         { Log.LogError("Unsupported build; timing test disabled."); return; }
+        Log.LogInfo("Game profile: " + PRStutter.GridExperiment.GameProfile.Id);
         Timing.Log = Log;
         AutomaticRuntime.Initialize(Config);
         _driver = AddComponent<Driver>();
-        Timing.Note("0.5.1 automatic field corrections ready. F9 enables/disables; timing, pacing and smoothing suspend independently. No duration limit. CRT OFF for smoothing. Diagnostics optional.");
+        Timing.Note("0.6.0 automatic field corrections ready. F9 enables/disables; timing, pacing and smoothing suspend independently. No duration limit. CRT OFF for smoothing. Diagnostics optional.");
     }
     public override bool Unload()
     {
@@ -36,12 +45,6 @@ public sealed class Plugin : BasePlugin
         if (!Timing.CleanupComplete) { Log.LogWarning("Unload deferred until timing hooks detach."); return false; }
         if (_driver != null) UnityEngine.Object.Destroy(_driver);
         return true;
-    }
-    private static bool Matches(string path, string expected)
-    {
-        using var stream = File.OpenRead(Path.Combine(Paths.GameRootPath, path));
-        using var sha = SHA256.Create();
-        return Convert.ToHexString(sha.ComputeHash(stream)).Equals(expected, StringComparison.OrdinalIgnoreCase);
     }
 }
 
@@ -141,8 +144,8 @@ internal static class Timing
         Note($"TIMING ON ({Remaining:F1}s). One early arrival step with native approval and collision checks; same-frame carry only. Five hooks. Coordinated={PRStutter.GridExperiment.ExperimentControls.Coordinated}.");
     }
     private static bool Valid() => Application.isFocused && Time.timeScale == 1 && _player != null &&
-        _player.gameObject.activeInHierarchy && (int)_player.moveState == 0 && !_player.IsAutoMoving && !_player.IsRiging && !_player.pauseMoving &&
-        _player.MovementPositionList != null && _player.MovementPositionList.Count == 0 &&
+        _player.gameObject.activeInHierarchy && (int)_player.moveState == 0 && !_player.IsAutoMoving && !PRStutter.GridExperiment.GameProfile.TransportActive(_player) && !_player.pauseMoving &&
+        PRStutter.GridExperiment.GameProfile.PathQueueEmpty(_player) &&
         _player.transform.rotation == Quaternion.identity && _player.transform.lossyScale == Vector3.one &&
         (_player.transform.parent == null ? IntPtr.Zero : _player.transform.parent.Pointer) == _parent &&
         _following != null && _following.TargetEntity != null && _following.TargetEntity.Pointer == _player.Pointer &&
@@ -238,7 +241,7 @@ internal static class Timing
         var task = _arrival;
         if (_arrivalFrame != frame || _arrivalCount != 1 || task == null)
             return row with { ArrivalAction = "no_unique_arrival_task" };
-        var iterator = task.handler?.TryCast<FootMonitoring._UpdateMonitor_d__41>();
+        var iterator = task.handler?.TryCast<ArrivalIterator>();
         if (task.Status != TaskBase.State.Request || iterator == null || iterator.__1__state != 0 ||
             iterator.__4__this == null || iterator.__4__this.Pointer != _field!.footMonitoring.Pointer ||
             iterator.entity == null || iterator.entity.Pointer != _player!.Pointer ||

@@ -37,6 +37,7 @@ internal static class AutomaticRuntime
     public static bool Enabled => _enabled?.Value ?? false;
     public static void Initialize(ConfigFile config)
     {
+        CorrectionStatus.Game = GameProfile.Id;
         CorrectionStatus.Available = true;
         _enabled = config.Bind("Corrections", "Enabled", true, "Automatic field corrections. F9 toggles this setting. Unsupported components suspend independently.");
         _timing = config.Bind("Corrections", "Timing", true, "Preserve tile time only for inspected manual movement.");
@@ -68,7 +69,7 @@ internal static class AutomaticRuntime
             FieldController? field = null;
             int controllerId = 0;
             if (player != null && player.gameObject.activeInHierarchy && (int)player.moveState == 0 &&
-                !player.IsAutoMoving && !player.IsRiging && !player.pauseMoving)
+                !player.IsAutoMoving && !GameProfile.TransportActive(player) && !player.pauseMoving)
                 foreach (var c in UnityEngine.Object.FindObjectsOfType<FieldPlayerKeyController>())
                     if (c.isActiveAndEnabled && c.InputEnable && c.fieldPlayer != null && c.fieldPlayer.Pointer == player.Pointer) {
                         manual = true; controllerId = c.GetInstanceID(); field = c.playerHandle?.TryCast<FieldController>();

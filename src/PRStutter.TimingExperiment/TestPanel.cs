@@ -16,7 +16,9 @@ internal static class TestPanel
     private static bool _uiFailed;
     private static bool _reportedReady, _reportedFailure;
     private static bool _panelToggleRequested;
-    private static string _message = "Automatic field corrections; unsupported components suspend.";
+    private static string _message = PRStutter.GridExperiment.GameProfile.HasMidpointClamp
+        ? "FFIV preview: native midpoint timing remains unchanged."
+        : "FFVI: automatic field corrections; unsupported components suspend.";
     public static bool SuppressTimingKey => true;
     public static void Tick()
     {

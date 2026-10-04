@@ -90,6 +90,18 @@ TransitionChecks.Run();
 using var stream = File.OpenRead(args[0]);
 using var pe = new PEReader(stream);
 var reader = pe.GetMetadataReader();
+if (args.Length > 1) {
+    string expectedIterator = args[1] == "FFIV" ? "_UpdateMonitor_d__36" : "_UpdateMonitor_d__41";
+    string otherIterator = args[1] == "FFIV" ? "_UpdateMonitor_d__41" : "_UpdateMonitor_d__36";
+    bool foundIterator = false;
+    foreach (var h in reader.TypeReferences) {
+        string name = reader.GetString(reader.GetTypeReference(h).Name);
+        foundIterator |= name == expectedIterator;
+        Check(name != otherIterator, "Wrong game's arrival iterator in compiled plugin");
+    }
+    Check(foundIterator, "Expected game-specific arrival adapter missing");
+    Console.WriteLine("PASS: compiled arrival iterator matches " + args[1]);
+}
 foreach (var handle in reader.AssemblyReferences)
     Check(!reader.GetString(reader.GetAssemblyReference(handle).Name).Contains("Diagnostics"), "Correction assembly depends on optional diagnostics");
 bool timerSetter=false, positionSetter=false, inputRequest=false, arrivalStart=false, arrivalUpdate=false;

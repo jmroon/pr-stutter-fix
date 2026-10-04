@@ -1,0 +1,14 @@
+<Project>
+  <PropertyGroup>
+    <PrGame Condition="'$(PrGame)' == ''">FFVI</PrGame>
+    <DefineConstants Condition="'$(PrGame)' == 'FFIV'">$(DefineConstants);PR_FFIV</DefineConstants>
+    <BaseOutputPath Condition="'$(PrGame)' == 'FFIV'">bin/FFIV/</BaseOutputPath>
+    <BaseIntermediateOutputPath Condition="'$(PrGame)' == 'FFIV'">obj/FFIV/</BaseIntermediateOutputPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin/**;obj/**</DefaultItemExcludes>
+  </PropertyGroup>
+  <Target Name="ValidatePrGame" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(PrGame)' == 'FFIV' and '$(GameDirectory)' != '' and !Exists('$(GameDirectory)/FINAL FANTASY IV_Data/il2cpp_data/Metadata/global-metadata.dat')" Text="FFIV profile requires FFIV game bindings." />
+    <Error Condition="'$(PrGame)' == 'FFVI' and '$(GameDirectory)' != '' and !Exists('$(GameDirectory)/FINAL FANTASY VI_Data/il2cpp_data/Metadata/global-metadata.dat')" Text="FFVI profile requires FFVI game bindings." />
+    <Error Condition="'$(PrGame)' != 'FFVI' and '$(PrGame)' != 'FFIV'" Text="Unsupported PrGame. Use FFVI or FFIV." />
+  </Target>
+</Project>

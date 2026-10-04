@@ -21,7 +21,7 @@ Copy-Item -LiteralPath $source -Destination $destination -Force
 $hash = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
 if ((Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash -ne $hash) { throw 'Deployment hash mismatch.' }
 [ordered]@{
-    PluginVersion='0.8.1'; Destination=$destination; Sha256=$hash; Installed=$true
+    PluginVersion='0.9.0'; Destination=$destination; Sha256=$hash; Installed=$true
     DeployedUtc=[DateTime]::UtcNow.ToString('o'); EnabledByDefault=$false
     AutomaticToggleKey='F9'; StandaloneToggleKeys=@{F6='6-second cropped pixel diagnostic, blocked during combined test';F7='VSync-paced field walking, 90s';F9='4x grid plus fractional motion';F10='8x grid plus fractional motion'}; CrtMustBeOff=$true
     PixelCaptureScope='Two 128x64 RGBA field patches; synchronous readback overhead recorded; 0.5s warmup plus 6s, maximum 1024 frames / 64 MiB managed pixel buffer. Not final composition or physical scanout.'

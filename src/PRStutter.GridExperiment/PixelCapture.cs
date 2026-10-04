@@ -85,7 +85,7 @@ internal static class PixelCapture
     private static bool Valid() => Application.isFocused && Time.timeScale == 1 &&
         QualitySettings.vSyncCount == _vsync && _camera != null && _camera.isActiveAndEnabled &&
         _following != null && _following.camera != null && _following.TargetEntity != null && _player != null &&
-        _following.TargetEntity.Pointer == _player.Pointer && (int)_player.moveState == 0 && !_player.IsAutoMoving && !_player.IsRiging &&
+        _following.TargetEntity.Pointer == _player.Pointer && (int)_player.moveState == 0 && !_player.IsAutoMoving && !PRStutter.GridExperiment.GameProfile.TransportActive(_player) &&
         PostProcessLite.GetMaterial() != null && PostProcessLite.GetMaterial().GetFloat("_FakeCRT") == 0 &&
         PostProcessLite.GetMaterial().GetFloat("_BlurMainGame") == 0 && PostProcessLite.GetMaterial().GetFloat("_PartialFadeOverlay") == 0 &&
         Controllers.Exists(c => c != null && c.isActiveAndEnabled && c.InputEnable && c.fieldPlayer != null && c.fieldPlayer.Pointer == _player.Pointer);

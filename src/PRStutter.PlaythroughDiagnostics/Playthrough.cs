@@ -175,7 +175,7 @@ internal static class Playthrough
         if (Writer.Busy) { Writer.RecordBusyDrop(); _incidents.Complete(); return; }
         long since = now - Stopwatch.Frequency * 18;
         Writer.TrySave(new {
-            SchemaVersion = 1, PluginVersion = "0.1.1", QpcFrequency = Stopwatch.Frequency,
+            SchemaVersion = 1, Game = CorrectionStatus.Game, PluginVersion = "0.2.0", QpcFrequency = Stopwatch.Frequency,
             Display = new { Width = Screen.width, Height = Screen.height, RefreshRate = Screen.currentResolution.refreshRate,
                 Vsync = QualitySettings.vSyncCount, TargetFrameRate = Application.targetFrameRate },
             StartedQpc = _started, SavedQpc = now, TriggerQpc = _incidents.TriggerQpc, Reason = _incidents.Reason,
