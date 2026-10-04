@@ -143,3 +143,30 @@ The full native FindObjectsOfType query still runs and is not guaranteed cheap.
 Actual overhead improvement must be measured in a new capture; compare perceived
 smoothness with diagnostics off first. The second sampled camera now prioritizes
 CameraTileMap rather than an auxiliary world-map camera.
+
+## Second FFIV capture: automatic-start ordering
+
+The revised layout and all visual/compositor checks succeeded in both area 39
+and area 2. Each smoothing attempt then failed with `Camera rendered before
+target preparation`, reporting zero completed/motion frames. Timing continued:
+the manual incident has 30 carried tiles, all observed unchanged next frame.
+Its recordings overlap the final recording and must not be summed.
+
+The automatic controller starts features in LateUpdate. When the grid driver's
+LateUpdate has already run that frame, newly attached camera hooks can receive
+render callbacks before Session.Prepare has ever executed. The earlier timed
+startup from Update did not expose that ordering. Grid 0.9.2 adds an explicit
+first-preparation gate: pre/post callbacks are ignored until preparation succeeds,
+then stale or absent preparation remains an error. Recovery/restoration does not
+reset the gate to unarmed. Tests cover both activation orders, ignored startup
+callbacks, restoration, extra callbacks and missing later preparation. This is
+shared automatic-runtime behavior; it is not an additional FFIV rendering layout.
+
+The second diagnostic build still measured up to 20.443 ms observer cost; bounding
+metadata construction did not resolve native scene-query cost. Diagnostics 0.2.2
+removes periodic discovery, using coalesced scene/context changes with one-second
+minimum spacing. It records discovery count/max duration. New actors in an
+unchanged context may be missed until recording is restarted. No claim is made
+that startup/transition scans are negligible or that live overhead is verified.
+Both profiles build and pass rendering, timing and read-only diagnostic checks;
+the new live smoothing result is still pending.

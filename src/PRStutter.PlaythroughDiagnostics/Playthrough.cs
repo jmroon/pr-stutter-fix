@@ -25,7 +25,10 @@ internal static class Playthrough
     private static readonly Dictionary<int, CameraInfo> CameraDescriptions = new();
     private static readonly Dictionary<int, EntityInfo> EntityDescriptions = new();
     private static readonly Dictionary<string, long> Coverage = new();
-    private static long _nextDiscovery, _previousFrame, _started, _nextUi;
+    private static long _previousFrame, _started, _nextUi;
+    private static DiscoveryRefresh _refresh = new(Stopwatch.Frequency);
+    private static int _activeScene = int.MinValue, _discoveries;
+    private static long _maxDiscoveryTicks;
     private static string _context = "", _status = "Diagnostics OFF | F10 enable | F11 mark";
     private static long _discoveryTicks, _maxObserverTicks, _totalObserverTicks, _frames;
     private static long _callbackTicks, _initializationTicks;
@@ -59,7 +62,9 @@ internal static class Playthrough
         _states = new RecentBuffer<CorrectionSnapshot>(256);
         _incidents = new IncidentGate(Stopwatch.Frequency * 30, Stopwatch.Frequency * 3);
         Cameras.Clear(); Entities.Clear(); CameraDescriptions.Clear(); EntityDescriptions.Clear(); Coverage.Clear();
-        _started = Stopwatch.GetTimestamp(); _nextDiscovery = _previousFrame = _nextUi = 0;
+        _started = Stopwatch.GetTimestamp(); _previousFrame = _nextUi = 0;
+        _refresh = new DiscoveryRefresh(Stopwatch.Frequency); _refresh.Request();
+        _activeScene = int.MinValue; _discoveries = 0; _maxDiscoveryTicks = 0;
         _discoveryTicks = _maxObserverTicks = _totalObserverTicks = _frames = 0;
         _untrackedCameras = _untrackedEntities = _coverageOverflow = 0;
         _context = ""; _recording = true;
@@ -87,7 +92,7 @@ internal static class Playthrough
         if (!_recording) return;
         long now = Stopwatch.GetTimestamp();
         _states!.Add(now, state with { Qpc = now });
-        if (_context != state.Context) { _context = state.Context ?? "waiting"; _nextDiscovery = 0; }
+        if (_context != state.Context) { _context = state.Context ?? "waiting"; _refresh.Request(); }
         if (state.Enabled && (!state.Timing || !state.Pacing || !state.Smoothing))
             _incidents.Trigger("fallback: " + _context + " | " + state.TimingReason + " | " + state.PacingReason + " | " + state.SmoothingReason, now);
         _callbackTicks += Stopwatch.GetTimestamp() - now;
@@ -96,7 +101,9 @@ internal static class Playthrough
     {
         if (!_recording) return;
         long begin = Stopwatch.GetTimestamp();
-        if (begin >= _nextDiscovery) Discover(begin);
+        int scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
+        if (scene != _activeScene) { _activeScene = scene; _refresh.Request(); }
+        if (_refresh.TryTake(begin)) Discover();
         int frame = Time.frameCount;
         foreach (var camera in Cameras) {
             if (camera == null || !camera.isActiveAndEnabled) continue;
@@ -135,12 +142,12 @@ internal static class Playthrough
         _costs!.Add(begin, new FrameCost(frame, begin, cost, wall, status.Timing, status.Pacing, status.Smoothing));
         _maxObserverTicks = Math.Max(_maxObserverTicks, cost); _totalObserverTicks += cost; _frames++;
     }
-    private static void Discover(long now)
+    private static void Discover()
     {
         long begin = Stopwatch.GetTimestamp();
         Cameras.Clear(); Entities.Clear();
-        // Discovery is capped at 1 Hz; steady-frame sampling uses cached references.
-        _nextDiscovery = now + Stopwatch.Frequency;
+        // Once at recording start, then on scene/context changes. No periodic scan.
+        // Newly spawned entities in an unchanged context require F10 off/on to refresh.
         var cameras = UnityEngine.Object.FindObjectsOfType<Camera>();
         // Prefer actual field views over the final fullscreen compositor.
         foreach (var camera in cameras)
@@ -164,7 +171,8 @@ internal static class Playthrough
             if (!selected) AddEntity(entity);
         }
         _untrackedEntities += Math.Max(0, entities.Length - Entities.Count);
-        _discoveryTicks += Stopwatch.GetTimestamp() - begin;
+        long cost = Stopwatch.GetTimestamp() - begin;
+        _discoveryTicks += cost; _maxDiscoveryTicks = Math.Max(_maxDiscoveryTicks, cost); _discoveries++;
     }
     private static void AddCamera(Camera camera)
     {
@@ -189,7 +197,7 @@ internal static class Playthrough
         if (Writer.Busy) { Writer.RecordBusyDrop(); _incidents.Complete(); return; }
         long since = now - Stopwatch.Frequency * 18;
         Writer.TrySave(new {
-            SchemaVersion = 1, Game = CorrectionStatus.Game, PluginVersion = "0.2.1", QpcFrequency = Stopwatch.Frequency,
+            SchemaVersion = 1, Game = CorrectionStatus.Game, PluginVersion = "0.2.2", QpcFrequency = Stopwatch.Frequency,
             Display = new { Width = Screen.width, Height = Screen.height, RefreshRate = Screen.currentResolution.refreshRate,
                 Vsync = QualitySettings.vSyncCount, TargetFrameRate = Application.targetFrameRate },
             StartedQpc = _started, SavedQpc = now, TriggerQpc = _incidents.TriggerQpc, Reason = _incidents.Reason,
@@ -200,7 +208,7 @@ internal static class Playthrough
             Loss = new { MotionOverwritten = _motion.Overwritten, MovementOverwritten = _movement.Overwritten,
                 FramesOverwritten = _costs.Overwritten, StatesOverwritten = _states.Overwritten,
                 SuppressedIncidents = _incidents.Suppressed, BusyWrites = Writer.Dropped, UntrackedCameras = _untrackedCameras, UntrackedEntities = _untrackedEntities, CoverageOverflow = _coverageOverflow },
-            Overhead = new { Frames = _frames, TotalObserverTicks = _totalObserverTicks, MaxObserverTicks = _maxObserverTicks, DiscoveryTicks = _discoveryTicks,
+            Overhead = new { Frames = _frames, TotalObserverTicks = _totalObserverTicks, MaxObserverTicks = _maxObserverTicks, DiscoveryTicks = _discoveryTicks, DiscoveryCount = _discoveries, MaxDiscoveryTicks = _maxDiscoveryTicks, DiscoveryMode = "scene/context changes; no periodic scan",
                 CallbackTicks = _callbackTicks, InitializationTicks = _initializationTicks,
                 Limitation = "LateUpdate wall cost includes discovery and prior capture snapshots; callback and startup costs separate. Background writer CPU/GPU impact requires debug-off comparison." }
         });

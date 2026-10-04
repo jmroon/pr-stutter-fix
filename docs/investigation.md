@@ -1454,3 +1454,14 @@ Playthrough Diagnostics 0.2.1 separately bounds entity metadata work after the
 capture revealed up to 16.5 ms observer spikes. Both changes passed offline checks
 for FFIV and FFVI; their live results remain unverified. Detailed evidence and
 limitations are in docs/ffiv-compatibility.md; raw captures remain local.
+
+### Automatic render startup gate and change-triggered discovery
+
+FFIV's second recording passed both area-39 and area-2 layout initialization,
+then failed on the first render callback with no target preparation and zero
+completed frames. Grid 0.9.2 waits for the first successful Prepare before its
+callbacks intervene; strict preparation checks continue afterward. The actual
+gate is tested for both LateUpdate orderings, restoration and missing preparation.
+Diagnostic discovery still peaked at 20.443 ms in the new recording, so 0.2.2
+removes the periodic scan and refreshes on scene/context changes. See the FFIV
+compatibility notes for limits and evidence. Live verification remains pending.

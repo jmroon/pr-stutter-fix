@@ -1,7 +1,7 @@
 # Automatic runtime and playthrough diagnostics
 
-Timing 0.6.1 / Grid 0.9.1 replace the coordinated 15-second experiment with
-independent, automatic field corrections. Playthrough Diagnostics 0.2.1 is a
+Timing 0.6.2 / Grid 0.9.2 replace the coordinated 15-second experiment with
+independent, automatic field corrections. Playthrough Diagnostics 0.2.2 is a
 separate optional DLL. The correction algorithms are the preceding tested
 cardinal/diagonal algorithms; their lifecycle and observation have changed.
 
@@ -43,6 +43,12 @@ after roughly 1–1.5 seconds of walking in a new context.
 
 ## Lifecycle and limits
 
+New render hooks wait for their first successfully prepared frame. This handles
+activation from the automatic controller after the render driver's LateUpdate
+has already run. Startup callbacks before preparation leave stock rendering alone;
+after the session is armed, missing preparation still stops the correction.
+
+
 Scene observations include follow/player/controller identities, area and map
 renderer identity, display dimensions and ordinary manual-control availability.
 Each component owns its existing restoration logic. Loss of control, focus,
@@ -68,17 +74,20 @@ objects. Recording capacity, disabled recording, writer errors and missing
 diagnostics do not stop the corrections. The debug DLL observes independently
 while corrections are suspended; it does not require a field follow target.
 
-The debug sampler discovers active cameras/field entities at most once per second
-(also refreshes after a changed correction context), then samples cached references
-in LateUpdate. It prioritizes the logical field camera, tile-render camera and player, tracks at most two
+The debug sampler discovers active cameras/field entities at recording start,
+then refreshes on active-scene or correction-context changes. Requests coalesce,
+with at most one scan per second during transitions; steady scenes have no
+periodic scan. It samples cached references in LateUpdate. Newly spawned actors
+in an unchanged context may be missed until F10 off/on or a context change. It prioritizes the logical field camera, tile-render camera and player, tracks at most two
 cameras/eight field entities, and records camera motion even with no field entity.
 It records logical world positions, camera projections, timer/endpoints, correction
 records, QPC timestamps and component states. Pure battle actors that are not
 FieldEntity objects are not tracked individually. Camera/entity discovery remains
 main-thread work and must be profiled in larger scenes. Only selected entities
 receive metadata; selection stops at eight. The native scene query still runs.
-The first FFIV capture measured discovery spikes up to 16.5 ms in the preceding
-build, so use diagnostics-off walking for the primary visual comparison.
+FFIV captures measured discovery spikes up to 20.4 ms in preceding builds, so
+use diagnostics-off walking for the primary visual comparison. Startup and scene
+changes can still incur discovery cost; its count and maximum are recorded.
 
 F11 requests approximately 15 seconds before and 3 seconds after the marker. Fixed
 capacity can shorten this window at high FPS/entity counts: 65,536 motion records,

@@ -55,3 +55,19 @@ public readonly record struct FrameCost(int Frame, long Qpc, long ObserverTicks,
     bool Timing, bool Pacing, bool Smoothing);
 public sealed record CameraInfo(int Id, string Name, string Scene, int TargetId, int Width, int Height, bool Orthographic, float Size, float Depth, int Mask);
 public sealed record EntityInfo(int Id, string Name, string Scene, bool Player);
+
+// Scene queries are explicitly requested, never repeated just because time passed.
+// Coalesce transition bursts and permit at most one discovery per cooldown.
+public sealed class DiscoveryRefresh
+{
+    private readonly long _spacing;
+    private long _nextAllowed;
+    private bool _requested;
+    public DiscoveryRefresh(long spacing) { if (spacing < 0) throw new ArgumentOutOfRangeException(nameof(spacing)); _spacing = spacing; }
+    public void Request() => _requested = true;
+    public bool TryTake(long now)
+    {
+        if (!_requested || now < _nextAllowed) return false;
+        _requested = false; _nextAllowed = now + _spacing; return true;
+    }
+}

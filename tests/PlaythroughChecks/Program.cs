@@ -8,6 +8,14 @@ using System.Text.Json;
 using PRStutter.PlaythroughDiagnostics;
 
 static void Check(bool ok, string message) { if (!ok) throw new Exception(message); }
+var refresh = new DiscoveryRefresh(100);
+Check(!refresh.TryTake(0), "Unrequested discovery admitted");
+refresh.Request(); refresh.Request(); Check(refresh.TryTake(0), "Initial discovery missing");
+Check(!refresh.TryTake(1) && !refresh.TryTake(10000), "Periodic discovery unexpectedly resumed");
+refresh.Request(); Check(!refresh.TryTake(99) && refresh.TryTake(100), "Transition cooldown or pending request lost");
+Check(!refresh.TryTake(200), "One request caused more than one discovery");
+refresh.Request(); refresh.Request(); Check(refresh.TryTake(200) && !refresh.TryTake(300), "Repeated context changes did not coalesce");
+Console.WriteLine("PASS: requested-only scene discovery, coalesced changes, transition rate limit and no periodic scans.");
 var ring = new RecentBuffer<int>(4);
 for (int i = 0; i < 12; i++) ring.Add(i, i);
 Check(ring.Overwritten == 8 && ring.Snapshot(0).SequenceEqual(new[] {8,9,10,11}), "Rolling buffer order/capacity wrong");
