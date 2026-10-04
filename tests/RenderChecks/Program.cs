@@ -9,6 +9,25 @@ using PRStutter.RenderExperiment;
 using PRStutter.GridExperiment;
 
 static void Check(bool value, string why) { if (!value) throw new Exception(why); }
+var ffivCameras = new[] { "CameraFieldMain", "CameraTileMap" };
+var ffviCameras = new[] { "CameraFieldMain", "CameraTileMap", "CameraUpperTransparentRT", "CameraCeilTransparentRT" };
+Check(FieldLayoutPolicy.Accepts("FFIV", ffivCameras, 1), "Recorded FFIV shared-target layout rejected");
+Check(FieldLayoutPolicy.Accepts("FFVI", ffviCameras, 3), "Inspected FFVI layout rejected");
+Check(!FieldLayoutPolicy.Accepts("FFVI", ffivCameras, 1), "FFVI silently accepted an incomplete layout");
+Check(!FieldLayoutPolicy.Accepts("FFIV", ffviCameras, 3), "FFIV silently accepted an uninspected layout");
+Check(!FieldLayoutPolicy.Accepts("FFIV", ffivCameras, 2), "Split FFIV targets accepted");
+Check(!FieldLayoutPolicy.Accepts("FFIV", new[] { "CameraFieldMain", "CameraTileMap", "CameraTileMap" }, 1), "Duplicate camera accepted");
+Check(!FieldLayoutPolicy.Accepts("FFIV", new[] { "CameraUpperTransparentRT", "CameraCeilTransparentRT" }, 1), "Unrelated camera pair accepted");
+Check(!FieldLayoutPolicy.Accepts("FFI", ffivCameras, 1), "Unknown game accepted");
+float singleRoot = 10;
+var singleCamera = new InheritedTranslation<float>(() => singleRoot, value => singleRoot = value,
+    Array.Empty<Func<float>>(), (a,b) => a+b, (a,b) => a==b);
+foreach (float offset in new[] { -.5f, 0, .25f }) {
+    singleCamera.Apply(offset); singleCamera.Validate();
+    Check(singleRoot == 10 + offset, "FFIV single render camera translation failed");
+    singleCamera.Restore(); Check(singleRoot == 10, "FFIV single render camera restoration failed");
+}
+Console.WriteLine("PASS: distinct FFIV/FFVI named layouts, rejection of incomplete/unknown layouts, and single-root translation/restoration.");
 // Regression: the transparency cameras inherit the tile camera's transform.
 // Exercise the same root-only translation object used by the plugin, with live
 // descendant getters rather than independent camera positions.

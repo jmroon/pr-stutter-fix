@@ -4,6 +4,7 @@
     <Nullable>enable</Nullable><TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/PRStutter.GridExperiment/FieldLayoutPolicy.cs" Link="FieldLayoutPolicy.cs" />
     <Compile Include="../../src/PRStutter.GridExperiment/InheritedTranslation.cs" Link="InheritedTranslation.cs" />
     <Compile Include="../../src/PRStutter.RenderExperiment/MotionResidual.cs" Link="MotionResidual.cs" />
     <Compile Include="../../src/PRStutter.RenderExperiment/UvOverride.cs" Link="UvOverride.cs" />

@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace PRStutter.GridExperiment;
 
-[BepInPlugin("local.prstutter.grid", "PR Stutter Grid Test", "0.9.0")]
+[BepInPlugin("local.prstutter.grid", "PR Stutter Grid Test", "0.9.1")]
 public sealed class Plugin : BasePlugin
 {
     private Driver? _driver;
@@ -27,7 +27,7 @@ public sealed class Plugin : BasePlugin
         PixelCapture.Register();
         _driver = AddComponent<Driver>();
         ExperimentControls.Ready = true;
-        Test.Note("0.9.0 ready, OFF by default. F9: automatic corrections when the timing plugin is loaded. Standalone-only controls: F6 pixel diagnostic; F7 pacing (90s); F9 4x / F10 8x smoothing (15s). CRT OFF. F6 disabled during a combined test. Ordinary cardinal and diagonal manual walking only.");
+        Test.Note("0.9.1 ready, OFF by default. F9: automatic corrections when the timing plugin is loaded. Standalone-only controls: F6 pixel diagnostic; F7 pacing (90s); F9 4x / F10 8x smoothing (15s). CRT OFF. F6 disabled during a combined test. Ordinary cardinal and diagonal manual walking only.");
     }
     public override bool Unload()
     {
@@ -204,8 +204,8 @@ internal sealed class Session
             _cameras.Add(new CameraBinding(camera, target));
         }
         _front = front ?? throw new InvalidOperationException("No final compositor camera.");
-        if (_cameras.Count != 4 || _targets.Count != 3 || _front.targetTexture != null || _front.depth != 99 ||
-            _front.rect != new Rect(0, 0, 1, 1)) throw new InvalidOperationException("Expected four field cameras, three textures and screen compositor.");
+        if (!FieldLayoutPolicy.Accepts(GameProfile.Id, names, _targets.Count) || _front.targetTexture != null || _front.depth != 99 ||
+            _front.rect != new Rect(0, 0, 1, 1)) throw new InvalidOperationException($"Unsupported {GameProfile.Id} field layout: cameras=[{string.Join(",", names)}], textures={_targets.Count}, compositorTarget={_front.targetTexture != null}, compositorDepth={_front.depth}, compositorRect={_front.rect}.");
         foreach (var c in _cameras) if (c.Camera.depth >= _front.depth) throw new InvalidOperationException("Unexpected render order.");
         var main = _cameras.Find(c => c.Camera.name == "CameraFieldMain")!;
         var tile = _cameras.Find(c => c.Camera.name == "CameraTileMap")!;
@@ -306,14 +306,14 @@ internal sealed class Session
         if (!IsFinal(pass) && _begun.Count == 0) _motion?.Apply();
         _motion?.ValidateApplied();
         if (IsFinal(pass)) {
-            if (_rendered.Count != 4) throw new InvalidOperationException("Incomplete field rendering before compositor.");
+            if (_rendered.Count != _cameras.Count) throw new InvalidOperationException("Incomplete field rendering before compositor.");
         } else if (!_begun.Add(pass.Pointer)) throw new InvalidOperationException("Repeated field-camera draw.");
     }
     public void After(GridPass pass)
     {
         if (_prepared != Time.frameCount) throw new InvalidOperationException("Post-render without prepared targets.");
         if (IsFinal(pass)) {
-            if (_rendered.Count != 4) throw new InvalidOperationException("Post-compositor without four completed field cameras.");
+            if (_rendered.Count != _cameras.Count) throw new InvalidOperationException("Post-compositor before every admitted field camera completed.");
             _frames++;
             Restore();
         } else if (!_begun.Contains(pass.Pointer) || !_rendered.Add(pass.Pointer))

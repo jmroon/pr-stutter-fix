@@ -27,10 +27,10 @@ Copy-Item -LiteralPath $source -Destination $destination -Force
 $hash = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
 if ((Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash -ne $hash) { throw 'Deployment hash mismatch.' }
 [ordered]@{
-    PluginVersion='0.6.0'; Destination=$destination; Sha256=$hash; Installed=$true
+    PluginVersion='0.6.1'; Destination=$destination; Sha256=$hash; Installed=$true
     DeployedUtc=[DateTime]::UtcNow.ToString('o'); EnabledByDefault=$true; HooksInstalledByDefault=$false
     ToggleKey='F9'; MaximumDurationSeconds=$null; RuntimeVerified=$false
-    Automatic=$true; PanelButton=$true; LegacyTimingCsvByDefault=$false; StatusPanel=$true; RequiredGridVersion='0.9.0'
+    Automatic=$true; PanelButton=$true; LegacyTimingCsvByDefault=$false; StatusPanel=$true; RequiredGridVersion='0.9.1'
     Scope='One early step of the exact newly queued player arrival task, admitted to the native scheduler for normal resumption/cleanup. Same-frame leftover time during cardinal 0.2s or diagonal 0.2*sqrt(2)s same-direction manual walks only after native approval and before camera update. Fresh input/collision checks retained; no carry across frames. Stops remove hooks; committed movement and admitted tasks remain game-owned.'
 } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $projectRoot 'artifacts/timing-experiment-deployment.json')
 Write-Host "Automatic timing runtime deployed, enabled by default; F9 toggles: $destination"

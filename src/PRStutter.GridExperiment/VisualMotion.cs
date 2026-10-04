@@ -39,8 +39,8 @@ internal sealed class VisualMotion
             if (camera.name == "CameraTileMap") tile = camera;
             _cameras.Add(new CameraPose(camera));
         }
-        if (_cameras.Count != 3 || tile == null || tile.cullingMask != 58867457)
-            throw new InvalidOperationException("Expected tile/upper/ceiling render cameras.");
+        if (_cameras.Count != FieldLayoutPolicy.RenderCameraCount(GameProfile.Id) || tile == null || tile.cullingMask != 58867457)
+            throw new InvalidOperationException("Unexpected render camera set for " + GameProfile.Id);
         _renderRoot = tile;
         var descendants = new List<Func<Vector3>>();
         foreach (var pose in _cameras) {
@@ -56,7 +56,7 @@ internal sealed class VisualMotion
             () => tile == null ? originalRoot : tile.transform.position,
             value => { if (tile != null) tile.transform.position = value; },
             descendants, (a, b) => a + b, Exact);
-        Test.Note("Motion camera hierarchy: move CameraTileMap only; CameraUpperTransparentRT and CameraCeilTransparentRT inherit the translation. Logical follow camera is separate.");
+        Test.Note($"Motion camera hierarchy ({GameProfile.Id}): move CameraTileMap only; {descendants.Count} transparency-camera children inherit the translation. Logical follow camera is separate.");
         AddVisual(player.spriteRenderer, 0, "body");
         AddVisual(player.headSpriteRenderer, 0, "head");
         if (player.shadowEntity == null || player.shadowEntity.ShadowVisualInstance == null)

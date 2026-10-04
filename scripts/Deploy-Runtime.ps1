@@ -39,7 +39,7 @@ foreach ($entry in $entries) {
     if ((Get-FileHash -LiteralPath $entry.Destination).Hash -ne $entry.Sha256) { throw 'Installed DLL hash mismatch.' }
 }
 [ordered]@{
-    DeployedUtc=[DateTime]::UtcNow.ToString('o'); Game=$Game; TimingVersion='0.6.0'; GridVersion='0.9.0'
+    DeployedUtc=[DateTime]::UtcNow.ToString('o'); Game=$Game; TimingVersion='0.6.1'; GridVersion='0.9.1'
     PlaythroughDiagnosticsVersion=$(if ($WithoutDiagnostics) { $null } else { '0.2.0' })
     CorrectionDefaultEnabled=$true; DebugDefaultEnabled=$false; RuntimeVerified=$false
     Backup=$backup; Files=$entries; GitCommit=(git -C $projectRoot rev-parse HEAD)
