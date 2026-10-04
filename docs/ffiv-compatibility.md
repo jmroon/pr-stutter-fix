@@ -110,7 +110,7 @@ initial differences.
 | Title | Current evidence |
 | --- | --- |
 | I, II, III, V | Not inspected; no supported build profile |
-| IV | Tile carry/pacing activated live; two-camera render adaptation and bounded discovery await retest |
+| IV | Rendering now runs, but repeated camera-offset faults and latched timing/pacing disablement make automatic operation unreliable; redesign investigation recorded below |
 | VI | Earlier walking algorithms have live evidence; latest automatic lifecycle still needs live transition checks |
 
 ## First FFIV capture: underground overworld and castle visit
@@ -170,3 +170,18 @@ unchanged context may be missed until recording is restarted. No claim is made
 that startup/transition scans are negligible or that live overhead is verified.
 Both profiles build and pass rendering, timing and read-only diagnostic checks;
 the new live smoothing result is still pending.
+
+## Third FFIV capture and reassessment
+
+Grid 0.9.2 now completes render frames, so the first-preparation gate resolved
+the startup failure. The run nevertheless shows 10 camera-offset faults across
+14 starts. In the final 9.57-second capture, timing and pacing stay off while
+smoothing remains on until quit. Temporary control loss can be missed by the
+half-second supervisor probe and then treated as a latched failure. This is a
+runtime defect, not a new unsupported camera layout.
+
+The fixed player-follow offset is also a fundamental limitation of the current
+smoothing algorithm. Another guard-only patch is not the next experiment. See
+[presentation redesign](presentation-redesign.md) for native evidence from both
+games, the independent entity/camera model, offline checks and remaining gates.
+The research checkpoint changes no installed plugin or game configuration.

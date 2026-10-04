@@ -9,6 +9,11 @@ FFVI is the default build profile. An FFIV preview uses separate generated bindi
 binary gates and build outputs; its native midpoint timing remains unchanged.
 See [FFIV compatibility](ffiv-compatibility.md) for scope and collection planning.
 
+The latest FFIV run exposes unreliable automatic recovery and repeated stops at
+camera-offset changes. This remains an experimental runtime. The
+[presentation redesign investigation](presentation-redesign.md) records the
+failures and a broader replacement boundary; it has not been deployed.
+
 ## Controls and configuration
 
 | Control | Effect |
