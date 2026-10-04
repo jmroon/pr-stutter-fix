@@ -1,10 +1,7 @@
 using System;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 using BepInEx;
 using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
@@ -13,6 +10,8 @@ using Last.Entity.Field;
 using Last.Management;
 using Last.Map;
 using UnityEngine;
+using Sample = PRStutter.TimingExperiment.MovementSample;
+using Row = PRStutter.TimingExperiment.MovementObservation;
 
 namespace PRStutter.TimingExperiment;
 
@@ -72,20 +71,18 @@ internal static class Timing
     private static IntPtr _parent;
     private static bool _active, _hooks, _requesting, _detachFailed;
     private static string? _pendingStop;
-    private static int _inputFrame = -1, _lastUpdate = -1, _count, _carried, _attempted;
+    private static int _inputFrame = -1, _lastUpdate = -1, _carried, _attempted;
     private static Vector2 _axis;
-    private static int _pendingRow = -1, _cameraFrame = -1, _footFrame = -1;
+    private static Row? _pending;
+    private static int _cameraFrame = -1, _footFrame = -1;
     private static bool _footAllowsNext;
     private static long _deadline;
     public static bool Active => _active;
     public static double Remaining => _active ? Math.Max(0, (_deadline - Stopwatch.GetTimestamp()) / (double)Stopwatch.Frequency) : 0;
     public static string LastStop { get; private set; } = "not started";
     public static int Carried => _carried;
-    public static bool Saving => _save is { IsCompleted: false };
+    public static bool Saving => TimingCapture.Saving;
     private static double _totalCarry;
-    private static Row[]? _rows;
-    private static string _stem = "";
-    private static Task? _save;
     private static string DirectoryPath => Path.Combine(Paths.BepInExRootPath, "diagnostics/PRStutter/timing");
     public static void Note(string message)
     {
@@ -102,7 +99,6 @@ internal static class Timing
     public static void Start(long deadline = 0)
     {
         if (_hooks) throw new InvalidOperationException("Previous hooks have not been removed.");
-        if (Saving) throw new InvalidOperationException("Previous capture is saving; try again in a moment.");
         _following = null; _player = null; _controller = null; _field = null; _main = null; _machine = null;
         foreach (var f in UnityEngine.Object.FindObjectsOfType<CameraFollowing>()) {
             if (f.TargetEntity == null || f.camera == null || !f.camera.isActiveAndEnabled) continue;
@@ -120,12 +116,10 @@ internal static class Timing
         _main = _field?.eventHandle?.TryCast<EventProcedure>()?.sceneHandle?.TryCast<MainGame>();
         _machine = _main?.residentMultiTask;
         if (!Valid()) throw new InvalidOperationException("Timing test requires an active ordinary manual-walking controller.");
-        _inputFrame = _lastUpdate = -1; _axis = Vector2.zero; _count = _carried = _attempted = 0; _totalCarry = 0; _detachFailed = false;
-        _pendingRow = _cameraFrame = _footFrame = -1; _footAllowsNext = false;
+        _inputFrame = _lastUpdate = -1; _axis = Vector2.zero; _carried = _attempted = 0; _totalCarry = 0; _detachFailed = false;
+        _pending = null; _cameraFrame = _footFrame = -1; _footAllowsNext = false;
         _captureFrame = _arrivalFrame = -1; _arrival = null; _arrivalCount = _primed = 0;
-        _rows = new Row[16384];
-        Directory.CreateDirectory(DirectoryPath);
-        _stem = Path.Combine(DirectoryPath, DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff"));
+        TimingCapture.Begin(); // Optional evidence cannot gate correction startup.
         // No ref Vector3 or camera hooks. Additional hooks observe arrival approval
         // and enter the field update before its native camera/visual work.
         _hooks = true; // Own partial installation so a failed second patch is removed.
@@ -179,7 +173,7 @@ internal static class Timing
             ExpirePending(frame);
             if (frame == _lastUpdate) { RequestStop("multiple_player_updates"); return; }
             _lastUpdate = frame;
-            __state = new Sample(true, frame, Stopwatch.GetTimestamp(), Time.deltaTime, Read(__instance), _axis, _inputFrame);
+            __state = new Sample(true, frame, Stopwatch.GetTimestamp(), Time.deltaTime, Read(__instance), _axis.x, _axis.y, _inputFrame);
             _arrival = null; _arrivalCount = 0; _arrivalFrame = -1;
             _captureFrame = CarryPolicy.TryRemainder(__state.Before, __state.Delta, out _) &&
                 CarryPolicy.SameInput(__state.Before, _axis.x, _axis.y, _inputFrame, frame) ? frame : -1;
@@ -197,22 +191,21 @@ internal static class Timing
             if (!Valid()) { RequestStop("control_changed_after_callbacks"); action = "control_changed"; }
             else if (CarryPolicy.TryRemainder(__state.Before, __state.Delta, out remainder) && CarryPolicy.Completed(__state.Before, after)) {
                 action = "no_fresh_same_direction_input";
-                if (CarryPolicy.SameInput(__state.Before, __state.Axis.x, __state.Axis.y, __state.InputFrame, __state.Frame)) {
+                if (CarryPolicy.SameInput(__state.Before, __state.AxisX, __state.AxisY, __state.InputFrame, __state.Frame)) {
                     action = "pending_arrival_checks";
                 }
             }
-            if (_rows == null || _count >= _rows.Length) { RequestStop("capacity"); return; }
-            int index = _count++;
-            _rows[index] = new Row(__state, after, after, remainder, 0, action, Stopwatch.GetTimestamp() - begin,
+            var row = new Row(__state, after, after, remainder, 0, action, Stopwatch.GetTimestamp() - begin,
                 _field?.isPlayerFootProcessing ?? true, _footFrame, _footAllowsNext, _cameraFrame);
-            if (action == "pending_arrival_checks") _pendingRow = index;
+            if (action == "pending_arrival_checks") _pending = row;
+            else CorrectionEvents.Movement.Publish(row);
         } catch (Exception e) { Fail(e); }
     }
     private static void ExpirePending(int frame)
     {
-        if (_pendingRow < 0 || _rows == null || _rows[_pendingRow].Sample.Frame == frame) return;
-        _rows[_pendingRow] = _rows[_pendingRow] with { Action = "expired_before_safe_camera_phase", FootFrame = _footFrame, FootAllowsNext = _footAllowsNext, CameraFrame = _cameraFrame };
-        _pendingRow = -1;
+        if (_pending is not { } row || row.Sample.Frame == frame) return;
+        _pending = null;
+        CorrectionEvents.Movement.Publish(row with { Action = "expired_before_safe_camera_phase", FootFrame = _footFrame, FootAllowsNext = _footAllowsNext, CameraFrame = _cameraFrame });
     }
     private static void FootFinishedPostfix(FieldController __instance, bool __0)
     {
@@ -291,16 +284,15 @@ internal static class Timing
         try {
             int frame = Time.frameCount;
             ExpirePending(frame);
-            if (_pendingRow >= 0 && _rows != null) {
-                int index = _pendingRow; _pendingRow = -1; // Consume once, including a refusal.
-                var row = _rows[index];
+            if (_pending is { } row) {
+                _pending = null; // Consume once, independent of any recording buffer.
                 row = PrimeArrival(row, frame);
                 bool permission = _active && Valid() && _controller!.playerHandle.IsCanPlayerOperation();
                 row = row with { FootFrame = _footFrame, FootAllowsNext = _footAllowsNext, CameraFrame = _cameraFrame };
                 if (!_active || !Valid() || !CarryPolicy.ReadyBeforeCamera(row.Sample.Frame, frame, _cameraFrame, _footFrame, _footAllowsNext, permission))
                     row = row with { Action = "arrival_checks_not_ready_before_camera" };
                 else row = Continue(row);
-                _rows[index] = row;
+                CorrectionEvents.Movement.Publish(row);
             }
             _cameraFrame = frame; // The original method now performs camera/visual updates exactly once.
         } catch (Exception e) { Fail(e); }
@@ -341,7 +333,7 @@ internal static class Timing
     public static void FinishPending() { if (_pendingStop is { } reason) Stop(reason); }
     public static void Stop(string reason)
     {
-        bool hadSession = _rows != null;
+        bool hadSession = _active || _hooks;
         if (_active || hadSession) LastStop = reason;
         _active = false; _pendingStop = null;
         // Called outside native hook execution. Removing our hooks restores the stock update path.
@@ -353,31 +345,12 @@ internal static class Timing
                 return;
             }
         }
-        if (_pendingRow >= 0 && _rows != null) _rows[_pendingRow] = _rows[_pendingRow] with { Action = "cancelled_on_stop" };
-        _pendingRow = -1;
+        if (_pending is { } pending) CorrectionEvents.Movement.Publish(pending with { Action = "cancelled_on_stop" });
+        _pending = null;
         _captureFrame = _arrivalFrame = -1; _arrival = null; _main = null; _machine = null;
-        var rows = _rows; int count = _count; _rows = null;
         _player = null; _controller = null; _following = null; _field = null; _inputFrame = -1; _requesting = false;
-        if (!hadSession || rows == null) return;
-        Note($"TIMING OFF ({reason}); frames={count}, arrivalTasksStepped={_primed}, continuationAttempts={_attempted}, carriedTiles={_carried}, carriedMs={_totalCarry * 1000:F4}. Hooks removed. Committed movement remains; game owns admitted tasks until normal completion.");
-        string stem = _stem;
-        _save = Task.Run(() => {
-            try {
-                var text = new StringBuilder("frame,qpc,delta_time,input_frame,axis_x,axis_y,before_timer,before_duration,before_start_x,before_start_y,before_dest_x,before_dest_y,before_x,before_y,after_timer,after_duration,after_x,after_y,final_timer,final_duration,final_start_x,final_start_y,final_dest_x,final_dest_y,final_x,final_y,remainder,applied,action,postfix_ticks,foot_busy_at_completion,foot_finished_frame,foot_allows_next,prior_camera_frame,arrival_task_action,arrival_iterator_state,arrival_queued_count,arrival_running_count\n");
-                for (int i = 0; i < count; i++) {
-                    var r = rows[i]; var s = r.Sample; var b = s.Before; var a = r.After; var n = r.Final;
-                    object[] fields = { s.Frame, s.Qpc, s.Delta, s.InputFrame, s.Axis.x, s.Axis.y, b.Timer, b.Duration, b.Sx, b.Sy, b.Dx, b.Dy, b.X, b.Y, a.Timer, a.Duration, a.X, a.Y, n.Timer, n.Duration, n.Sx, n.Sy, n.Dx, n.Dy, n.X, n.Y, r.Remainder, r.Applied, r.Action, r.Ticks, r.FootBusy, r.FootFrame, r.FootAllowsNext, r.CameraFrame, r.ArrivalAction, r.ArrivalState, r.RequestCount, r.RunningCount };
-                    for (int j = 0; j < fields.Length; j++) { if (j > 0) text.Append(','); text.Append(Convert.ToString(fields[j], CultureInfo.InvariantCulture)); }
-                    text.Append('\n');
-                }
-                File.WriteAllText(stem + ".csv", text.ToString());
-                File.WriteAllText(stem + ".txt", $"Version: 0.4.0\nQPC frequency: {Stopwatch.Frequency}\nStop: {reason}\nNo GPU readback. postfix_ticks excludes prefix and original native update; includes early arrival step and deferred continuation when attempted.\n");
-                Note("TIMING SAVED " + stem + ".csv");
-            } catch (Exception e) { Note("TIMING SAVE FAILED " + e); }
-        });
+        TimingCapture.End(reason);
+        if (hadSession) Note($"TIMING OFF ({reason}); arrivalTasksStepped={_primed}, continuationAttempts={_attempted}, carriedTiles={_carried}, carriedMs={_totalCarry * 1000:F4}. Hooks removed. Committed movement remains; game owns admitted tasks until normal completion.");
     }
-    public static void WaitForSave() { try { _save?.Wait(3000); } catch (Exception e) { Log?.LogWarning(e); } }
-    private readonly record struct Sample(bool Valid, int Frame, long Qpc, float Delta, Walk Before, Vector2 Axis, int InputFrame);
-    private readonly record struct Row(Sample Sample, Walk After, Walk Final, float Remainder, float Applied, string Action, long Ticks, bool FootBusy, int FootFrame, bool FootAllowsNext, int CameraFrame,
-        string ArrivalAction = "none", int ArrivalState = -1, int RequestCount = -1, int RunningCount = -1);
+    public static void WaitForSave() => TimingCapture.Wait();
 }

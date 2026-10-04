@@ -82,6 +82,7 @@ Console.WriteLine("PASS: deferred carry requires fresh approved arrival checks, 
 ArrivalAdmissionChecks.Run();
 CombinedRunChecks.Run();
 DiagonalChecks.Run();
+ObserverChecks.Run();
 
 // A separate gameplay experiment has a separate, explicit mutation surface.
 using var stream = File.OpenRead(args[0]);
