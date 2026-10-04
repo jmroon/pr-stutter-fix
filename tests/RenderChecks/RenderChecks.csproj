@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable><TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/PRStutter.GridExperiment/InheritedTranslation.cs" Link="InheritedTranslation.cs" />
+    <Compile Include="../../src/PRStutter.RenderExperiment/MotionResidual.cs" Link="MotionResidual.cs" />
+    <Compile Include="../../src/PRStutter.RenderExperiment/UvOverride.cs" Link="UvOverride.cs" />
+    <Compile Include="../../src/PRStutter.RenderExperiment/ScopedOverride.cs" Link="ScopedOverride.cs" />
+    <Compile Include="../../src/PRStutter.RenderExperiment/StabilizationMath.cs" Link="StabilizationMath.cs" />
+  </ItemGroup>
+</Project>

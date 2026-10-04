@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework><CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <Nullable>enable</Nullable><TreatWarningsAsErrors>true</TreatWarningsAsErrors><Deterministic>true</Deterministic>
+    <GameDirectory Condition="'$(GameDirectory)' == ''">D:\SteamLibrary\steamapps\common\FINAL FANTASY VI PR</GameDirectory>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../PRStutter.GridExperiment/PRStutter.GridExperiment.csproj" Private="false" />
+    <Reference Include="UnityEngine.IMGUIModule" HintPath="$(GameDirectory)\BepInEx\interop\UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="UnityEngine.TextRenderingModule" HintPath="$(GameDirectory)\BepInEx\interop\UnityEngine.TextRenderingModule.dll" Private="false" />
+    <Reference Include="Assembly-CSharp" HintPath="$(GameDirectory)\BepInEx\interop\Assembly-CSharp.dll" Private="false" />
+    <Reference Include="UnityEngine.InputLegacyModule" HintPath="$(GameDirectory)\BepInEx\interop\UnityEngine.InputLegacyModule.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(GameDirectory)\BepInEx\interop\UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="Il2Cppmscorlib" HintPath="$(GameDirectory)\BepInEx\interop\Il2Cppmscorlib.dll" Private="false" />
+    <Reference Include="BepInEx.Core" HintPath="$(GameDirectory)\BepInEx\core\BepInEx.Core.dll" Private="false" />
+    <Reference Include="BepInEx.Unity.IL2CPP" HintPath="$(GameDirectory)\BepInEx\core\BepInEx.Unity.IL2CPP.dll" Private="false" />
+    <Reference Include="Il2CppInterop.Runtime" HintPath="$(GameDirectory)\BepInEx\core\Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(GameDirectory)\BepInEx\core\0Harmony.dll" Private="false" />
+  </ItemGroup>
+</Project>

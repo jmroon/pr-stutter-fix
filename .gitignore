@@ -1,0 +1,23 @@
+.tools/
+.cache/
+.state/
+artifacts/
+tools.local.json
+**/bin/
+**/obj/
+*.user
+__pycache__/
+
+# Local credentials and environments
+.env
+.env.*
+!.env.example
+.venv/
+
+# Generated binaries and extracted game data must stay local.
+*.dll
+*.exe
+*.pdb
+*.assets
+*.bundle
+global-metadata.dat

@@ -1,0 +1,4 @@
+# Versions used for the pixel-analysis checks and optional presentation plots.
+numpy==2.5.3
+matplotlib==3.10.7
+pillow==12.3.0
