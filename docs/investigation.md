@@ -1427,3 +1427,14 @@ verifies installed hashes and writes a local deployment/rollback manifest. See
 README.md and docs/runtime.md for current controls; earlier investigation controls
 and timer limits are historical. This build has not yet been installed; installation
 requires the user's approval following an automatic approval-review rejection.
+
+
+### Hotkey follow-up
+
+Timing 0.5.1 / Grid 0.8.1 / Playthrough Diagnostics 0.1.1 move the automatic
+controls to F9 (corrections), F10 (debug recording) and F11 (incident marker),
+leaving the game's F1-F4 shortcuts alone. The automatic runtime continues to
+suppress legacy standalone experiment actions, including their F9/F10 actions.
+F8 remains an optional specialist field/render-hierarchy capture, unnecessary
+for routine playthrough testing and independent of the correction runtime.
+This source update is not an installation; the installed timed build is unchanged.

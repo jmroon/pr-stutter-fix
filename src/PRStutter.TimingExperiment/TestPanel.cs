@@ -20,7 +20,7 @@ internal static class TestPanel
     public static bool SuppressTimingKey => true;
     public static void Tick()
     {
-        bool toggle = _panelToggleRequested || Input.GetKeyDown(KeyCode.F4);
+        bool toggle = _panelToggleRequested || Input.GetKeyDown(KeyCode.F9);
         _panelToggleRequested = false;
         if (toggle) AutomaticRuntime.Toggle();
     }
@@ -55,7 +55,7 @@ internal static class TestPanel
                     "\nTiming: " + State(Timing.Active, status.TimingReason) + $"  |  Corrections: {Timing.Carried}" +
                     "\nPacing: " + State(ExperimentControls.PacingActive, status.PacingReason) +
                     "\nSmoothing: " + State(ExperimentControls.SmoothingActive, status.SmoothingReason) +
-                    "\nF4: enable/disable   |   Smoothing requires CRT OFF\n" +
+                    "\nF9: enable/disable   |   Smoothing requires CRT OFF\n" +
                     (Timing.Saving ? "Saving optional timing capture..." : _message);
                 _content ??= new GUIContent();
                 _content.text = text;
@@ -67,7 +67,7 @@ internal static class TestPanel
             GUI.Label(rect, _content, _style);
             var button = new Rect(12, 16 + _height, width, font + 24);
             if (GUI.Button(button, "")) _panelToggleRequested = true;
-            GUI.Label(button, AutomaticRuntime.Enabled ? "DISABLE CORRECTIONS  (F4)" : "ENABLE CORRECTIONS  (F4)", _style);
+            GUI.Label(button, AutomaticRuntime.Enabled ? "DISABLE CORRECTIONS  (F9)" : "ENABLE CORRECTIONS  (F9)", _style);
             if (Event.current.type == EventType.Repaint) _lastDraw = now;
         } catch (Exception e) { _uiFailed = true; _message = "Status panel failed: " + e.Message; }
     }
@@ -75,6 +75,6 @@ internal static class TestPanel
     {
         if (_lastDraw != 0 && !_reportedReady) { _reportedReady = true; Timing.Note("STATUS PANEL READY; first draw completed."); }
         if (_uiFailed && !_reportedFailure) { _reportedFailure = true; Timing.Note("STATUS PANEL FAILED: " + _message); }
-        // Panel failure must not disable corrections; F4 remains available in Update.
+        // Panel failure must not disable corrections; F9 remains available in Update.
     }
 }

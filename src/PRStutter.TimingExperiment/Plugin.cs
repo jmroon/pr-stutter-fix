@@ -15,8 +15,8 @@ using Row = PRStutter.TimingExperiment.MovementObservation;
 
 namespace PRStutter.TimingExperiment;
 
-[BepInPlugin("local.prstutter.timing", "PR Stutter Tile Timing Test", "0.5.0")]
-[BepInDependency("local.prstutter.grid", "0.8.0")]
+[BepInPlugin("local.prstutter.timing", "PR Stutter Tile Timing Test", "0.5.1")]
+[BepInDependency("local.prstutter.grid", "0.8.1")]
 public sealed class Plugin : BasePlugin
 {
     private Driver? _driver;
@@ -28,7 +28,7 @@ public sealed class Plugin : BasePlugin
         Timing.Log = Log;
         AutomaticRuntime.Initialize(Config);
         _driver = AddComponent<Driver>();
-        Timing.Note("0.5.0 automatic field corrections ready. F4 enables/disables; timing, pacing and smoothing suspend independently. No duration limit. CRT OFF for smoothing. Diagnostics optional.");
+        Timing.Note("0.5.1 automatic field corrections ready. F9 enables/disables; timing, pacing and smoothing suspend independently. No duration limit. CRT OFF for smoothing. Diagnostics optional.");
     }
     public override bool Unload()
     {

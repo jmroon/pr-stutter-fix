@@ -1,7 +1,7 @@
 # Automatic runtime and playthrough diagnostics
 
-Timing 0.5.0 / Grid 0.8.0 replace the coordinated 15-second experiment with
-independent, automatic field corrections. Playthrough Diagnostics 0.1.0 is a
+Timing 0.5.1 / Grid 0.8.1 replace the coordinated 15-second experiment with
+independent, automatic field corrections. Playthrough Diagnostics 0.1.1 is a
 separate optional DLL. The correction algorithms are the preceding tested
 cardinal/diagonal algorithms; their lifecycle and observation have changed.
 
@@ -9,17 +9,27 @@ cardinal/diagonal algorithms; their lifecycle and observation have changed.
 
 | Control | Effect |
 | --- | --- |
-| F4 or top-left panel button | Enable/disable automatic corrections; persists in configuration |
-| F2 | Enable/disable optional debug recording; persists in configuration |
-| F3 | Mark a visible problem while debug recording is on |
+| F9 or top-left panel button | Enable/disable automatic corrections; persists in configuration |
+| F10 | Enable/disable optional debug recording; persists in configuration |
+| F11 | Mark a visible problem while debug recording is on |
 | F8 | Original standalone 15-second passive logger, if still installed |
 
 Corrections default to enabled. Debug recording and legacy timing CSV default
 to disabled. The configuration files are `BepInEx/config/local.prstutter.timing.cfg`
 and `BepInEx/config/local.prstutter.playthrough.cfg`. The timing configuration has
 independent Timing, Pacing and Smoothing switches. Edit configuration while the
-game is closed. F5/F6/F7/F9/F10 experiment controls are suppressed while the
-automatic runtime is loaded, even when F4 has disabled corrections.
+game is closed. The old standalone F5/F6/F7/F9/F10 experiment actions are suppressed while the
+automatic runtime is loaded, even when F9 has disabled corrections.
+
+F1-F4 are left to the game. F9/F10 have only their new automatic-runtime roles
+when that runtime is loaded. F11 marks an incident; F12 is left untouched.
+
+F8 is a specialist tool, unnecessary for routine playthrough testing. Its separate
+legacy plugin records a bounded field-follow trace plus render-target, material
+and sprite-hierarchy inspection that the playthrough logger does not collect. It
+requires an active field follow target. Keep it available for rendering investigations;
+use F10/F11 for routine debug recording. The automatic runtime does not depend on it
+and its deployment script does not install it.
 
 CRT must be off for smoothing. Timing and pacing do not require the smoothing
 layout to be supported. The status panel shows each component's actual activation
@@ -35,7 +45,7 @@ Each component owns its existing restoration logic. Loss of control, focus,
 camera assumptions or inspected movement conditions stops affected corrections.
 The supervisor restarts eligible components after supported context returns.
 A startup failure or runtime guard failure is latched for that component until
-the relevant context changes; F4 off/on explicitly retries. Failed restoration
+the relevant context changes; F9 off/on explicitly retries. Failed restoration
 must complete before another start. Partial starts are restored independently.
 
 The rendering algorithm still expects the inspected camera/texture/hierarchy
@@ -63,7 +73,7 @@ records, QPC timestamps and component states. Pure battle actors that are not
 FieldEntity objects are not tracked individually. Camera/entity discovery remains
 main-thread work and must be profiled in larger scenes.
 
-F3 requests approximately 15 seconds before and 3 seconds after the marker. Fixed
+F11 requests approximately 15 seconds before and 3 seconds after the marker. Fixed
 capacity can shorten this window at high FPS/entity counts: 65,536 motion records,
 8,192 movement records, 8,192 frame-cost records and 256 state records. It saves
 available evidence even when the buffer has only just started filling. Samples are
@@ -72,7 +82,7 @@ plain managed values; serialization and writing run on a worker without Unity ca
 Automatic incident candidates include unsupported/fallback states, long game
 updates and a movement-conservation mismatch. They are deduplicated, limited to
 one per 30 seconds and at most 128 distinct automatic keys per recording session.
-F3 bypasses automatic deduplication/cooldown but never creates simultaneous captures.
+F11 bypasses automatic deduplication/cooldown but never creates simultaneous captures.
 Only one disk write can be in flight; extra incidents are dropped and counted.
 Disabling diagnostics requests a final capture with the accumulated coverage.
 
@@ -100,7 +110,7 @@ video or a dedicated pixel capture is needed for final image artifacts.
 Overhead counters separate startup allocation, callback time and LateUpdate wall
 time (including discovery). Background serialization and cache/GC effects are not
 fully represented by those counters. Compare debug on/off under PresentMon before
-calling debug mode negligible-cost. F2 off releases the large ring buffers.
+calling debug mode negligible-cost. F10 off releases the large ring buffers.
 
 ## Build, install and restore
 
@@ -152,12 +162,12 @@ been verified in the game**. The earlier live evidence applies to the timed
 algorithms, not this new lifecycle. The next live check is:
 
 1. CRT off, load a safe field area. Walk until the three component states activate.
-2. F2 on; walk cardinally and diagonally, change direction, then release input.
+2. F10 on; walk cardinally and diagonally, change direction, then release input.
 3. Open/close the menu, lose/regain focus, and return from an available cutscene or
    battle. Check appropriate suspension, original-state restoration and resumption.
-4. Use F3 if anything looks wrong; allow three seconds of post-marker recording.
-5. F4 off: confirm stock behavior while diagnostics stay on. F4 on: confirm recovery.
-6. F2 off: confirm corrections continue, then inspect the saved incident/coverage files.
+4. Use F11 if anything looks wrong; allow three seconds of post-marker recording.
+5. F9 off: confirm stock behavior while diagnostics stay on. F9 on: confirm recovery.
+6. F10 off: confirm corrections continue, then inspect the saved incident/coverage files.
 
 Static/cinematic camera smoothing may remain suspended. Do not treat this alone
 as a failed playthrough: it is a recorded requirement for a later implementation.

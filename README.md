@@ -10,9 +10,9 @@ have targeted live evidence. The new automatic lifecycle and playthrough debug
 mode pass offline checks but still require in-game transition and overhead checks.
 Unknown cinematic/battle/camera layouts suspend unsupported corrections.
 
-Current components: **Timing 0.5.0**, **Grid 0.8.0**, optional **Playthrough
-Diagnostics 0.1.0**. F4 enables/disables automatic corrections; F2 toggles debug
-recording; F3 marks an incident. Smoothing requires CRT off. Debug recording is
+Current components: **Timing 0.5.1**, **Grid 0.8.1**, optional **Playthrough
+Diagnostics 0.1.1**. F9 enables/disables automatic corrections; F10 toggles debug
+recording; F11 marks an incident. Smoothing requires CRT off. Debug recording is
 optional and cannot gate correction behavior.
 
 **[Runtime controls, architecture, installation, rollback and verification](docs/runtime.md)**

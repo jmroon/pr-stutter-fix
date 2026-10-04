@@ -14,7 +14,7 @@ using UnityEngine;
 
 namespace PRStutter.GridExperiment;
 
-[BepInPlugin("local.prstutter.grid", "PR Stutter Grid Test", "0.8.0")]
+[BepInPlugin("local.prstutter.grid", "PR Stutter Grid Test", "0.8.1")]
 public sealed class Plugin : BasePlugin
 {
     private Driver? _driver;
@@ -28,7 +28,7 @@ public sealed class Plugin : BasePlugin
         PixelCapture.Register();
         _driver = AddComponent<Driver>();
         ExperimentControls.Ready = true;
-        Test.Note("0.8.0 ready, OFF by default. F4: automatic corrections via the timing plugin and status panel. Separate controls: F6 pixel diagnostic; F7 pacing (90s); F9 4x / F10 8x smoothing (15s). CRT OFF. F6 disabled during a combined test. Ordinary cardinal and diagonal manual walking only.");
+        Test.Note("0.8.1 ready, OFF by default. F9: automatic corrections when the timing plugin is loaded. Standalone-only controls: F6 pixel diagnostic; F7 pacing (90s); F9 4x / F10 8x smoothing (15s). CRT OFF. F6 disabled during a combined test. Ordinary cardinal and diagonal manual walking only.");
     }
     public override bool Unload()
     {

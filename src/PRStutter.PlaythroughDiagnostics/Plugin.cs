@@ -6,8 +6,8 @@ using UnityEngine;
 
 namespace PRStutter.PlaythroughDiagnostics;
 
-[BepInPlugin("local.prstutter.playthrough", "PR Stutter Playthrough Diagnostics", "0.1.0")]
-[BepInDependency("local.prstutter.timing", "0.5.0")]
+[BepInPlugin("local.prstutter.playthrough", "PR Stutter Playthrough Diagnostics", "0.1.1")]
+[BepInDependency("local.prstutter.timing", "0.5.1")]
 public sealed class Plugin : BasePlugin
 {
     private Driver? _driver;
@@ -16,7 +16,7 @@ public sealed class Plugin : BasePlugin
         if (!CorrectionStatus.Available) { Log.LogWarning("Supported correction runtime unavailable; diagnostics disabled."); return; }
         Playthrough.Initialize(Config);
         _driver = AddComponent<Driver>();
-        Log.LogInfo("Optional playthrough diagnostics ready. F2 toggles recording; F3 marks visible jitter. No GPU readback or native hooks. F8 remains the old standalone capture.");
+        Log.LogInfo("Optional playthrough diagnostics ready. F10 toggles recording; F11 marks visible jitter. No GPU readback or native hooks. F8 remains the old standalone capture.");
     }
     public override bool Unload()
     {

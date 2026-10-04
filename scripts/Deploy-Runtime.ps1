@@ -34,10 +34,10 @@ foreach ($entry in $entries) {
     if ((Get-FileHash -LiteralPath $entry.Destination).Hash -ne $entry.Sha256) { throw 'Installed DLL hash mismatch.' }
 }
 [ordered]@{
-    DeployedUtc=[DateTime]::UtcNow.ToString('o'); TimingVersion='0.5.0'; GridVersion='0.8.0'
-    PlaythroughDiagnosticsVersion=$(if ($WithoutDiagnostics) { $null } else { '0.1.0' })
+    DeployedUtc=[DateTime]::UtcNow.ToString('o'); TimingVersion='0.5.1'; GridVersion='0.8.1'
+    PlaythroughDiagnosticsVersion=$(if ($WithoutDiagnostics) { $null } else { '0.1.1' })
     CorrectionDefaultEnabled=$true; DebugDefaultEnabled=$false; RuntimeVerified=$false
     Backup=$backup; Files=$entries; GitCommit=(git -C $projectRoot rev-parse HEAD)
     Note='Offline verification passed; live automatic transitions and debug overhead remain to be measured. WithoutDiagnostics skips installation; it does not remove an existing diagnostics plugin.'
 } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $projectRoot 'artifacts/runtime-deployment.json')
-Write-Host "Automatic runtime installed; F4 toggles corrections, F2 toggles optional debug, F3 marks an incident. Backups: $backup"
+Write-Host "Automatic runtime installed; F9 toggles corrections, F10 toggles optional debug, F11 marks an incident. Backups: $backup"

@@ -9,7 +9,7 @@ public static class ExperimentControls
     public static bool Ready { get; internal set; }
     public static bool Coordinated { get; private set; }
     private static int _suppressedFrame = -1;
-    internal static bool SuppressKeys => Coordinated || _suppressedFrame == Time.frameCount || Input.GetKeyDown(KeyCode.F4);
+    internal static bool SuppressKeys => Coordinated || _suppressedFrame == Time.frameCount;
     public static void SetCoordinated(bool value) { Coordinated = value; _suppressedFrame = Time.frameCount; }
     public static bool PacingActive => PacingTest.Active;
     public static bool SmoothingActive => Test.Active;

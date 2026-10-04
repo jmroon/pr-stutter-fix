@@ -26,7 +26,7 @@ internal static class Playthrough
     private static readonly Dictionary<int, EntityInfo> EntityDescriptions = new();
     private static readonly Dictionary<string, long> Coverage = new();
     private static long _nextDiscovery, _previousFrame, _started, _nextUi;
-    private static string _context = "", _status = "Diagnostics OFF | F2 enable | F3 mark";
+    private static string _context = "", _status = "Diagnostics OFF | F10 enable | F11 mark";
     private static long _discoveryTicks, _maxObserverTicks, _totalObserverTicks, _frames;
     private static long _callbackTicks, _initializationTicks;
     private static int _untrackedCameras, _untrackedEntities, _coverageOverflow;
@@ -36,19 +36,19 @@ internal static class Playthrough
     public static string Status => _status;
     public static void Initialize(ConfigFile config)
     {
-        _enabled = config.Bind("Debug", "Enabled", false, "F2 toggles bounded playthrough recording independently of corrections. F3 saves surrounding context. No GPU readback.");
+        _enabled = config.Bind("Debug", "Enabled", false, "F10 toggles bounded playthrough recording independently of corrections. F11 saves surrounding context. No GPU readback.");
         _movementSubscription = CorrectionEvents.Movement.Subscribe(row => { try { OnMovement(row); } catch (Exception e) { Fault(e); } });
         _statusSubscription = CorrectionStatus.Changes.Subscribe(state => { try { OnState(state); } catch (Exception e) { Fault(e); } });
         if (_enabled.Value) Begin();
     }
     public static void Keys()
     {
-        bool toggle = Input.GetKeyDown(KeyCode.F2);
+        bool toggle = Input.GetKeyDown(KeyCode.F10);
         if (_faulted && !toggle) return;
         if (toggle) { _faulted = false; _enabled.Value = !_enabled.Value; }
         if (_enabled.Value && !_recording) Begin();
         if (!_enabled.Value && _recording) End();
-        if (_recording && Input.GetKeyDown(KeyCode.F3)) _incidents.Trigger("manual-marker", Stopwatch.GetTimestamp(), true);
+        if (_recording && Input.GetKeyDown(KeyCode.F11)) _incidents.Trigger("manual-marker", Stopwatch.GetTimestamp(), true);
     }
     private static void Begin()
     {
@@ -128,7 +128,7 @@ internal static class Playthrough
         if (Time.unscaledDeltaTime > .05f) _incidents.Trigger("long-update-candidate", begin);
         if (_incidents.Reason != null && begin >= _incidents.DueQpc) Save(begin);
         if (begin >= _nextUi) {
-            _status = $"Diagnostics ON | F2 off | F3 mark | {(_incidents.Reason != null ? "collecting incident" : Writer.Status)} | observer max {_maxObserverTicks * 1000.0 / Stopwatch.Frequency:F3} ms";
+            _status = $"Diagnostics ON | F10 off | F11 mark | {(_incidents.Reason != null ? "collecting incident" : Writer.Status)} | observer max {_maxObserverTicks * 1000.0 / Stopwatch.Frequency:F3} ms";
             _nextUi = begin + Stopwatch.Frequency;
         }
         long cost = Stopwatch.GetTimestamp() - begin;
@@ -175,7 +175,7 @@ internal static class Playthrough
         if (Writer.Busy) { Writer.RecordBusyDrop(); _incidents.Complete(); return; }
         long since = now - Stopwatch.Frequency * 18;
         Writer.TrySave(new {
-            SchemaVersion = 1, PluginVersion = "0.1.0", QpcFrequency = Stopwatch.Frequency,
+            SchemaVersion = 1, PluginVersion = "0.1.1", QpcFrequency = Stopwatch.Frequency,
             Display = new { Width = Screen.width, Height = Screen.height, RefreshRate = Screen.currentResolution.refreshRate,
                 Vsync = QualitySettings.vSyncCount, TargetFrameRate = Application.targetFrameRate },
             StartedQpc = _started, SavedQpc = now, TriggerQpc = _incidents.TriggerQpc, Reason = _incidents.Reason,
@@ -199,7 +199,7 @@ internal static class Playthrough
         Save(Stopwatch.GetTimestamp()); _recording = false;
         _motion = null; _movement = null; _costs = null; _states = null;
         Cameras.Clear(); Entities.Clear();
-        _status = "Diagnostics OFF | F2 enable | F3 mark";
+        _status = "Diagnostics OFF | F10 enable | F11 mark";
     }
     public static void Fault(Exception e)
     {

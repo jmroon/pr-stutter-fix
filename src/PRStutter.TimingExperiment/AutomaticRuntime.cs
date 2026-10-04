@@ -38,7 +38,7 @@ internal static class AutomaticRuntime
     public static void Initialize(ConfigFile config)
     {
         CorrectionStatus.Available = true;
-        _enabled = config.Bind("Corrections", "Enabled", true, "Automatic field corrections. F4 toggles this setting. Unsupported components suspend independently.");
+        _enabled = config.Bind("Corrections", "Enabled", true, "Automatic field corrections. F9 toggles this setting. Unsupported components suspend independently.");
         _timing = config.Bind("Corrections", "Timing", true, "Preserve tile time only for inspected manual movement.");
         _pacing = config.Bind("Corrections", "Pacing", true, "Scoped display-paced VSync during supported field control.");
         _smoothing = config.Bind("Corrections", "Smoothing", true, "8x smoothing after observing a freely following camera. CRT must be off.");
@@ -48,7 +48,7 @@ internal static class AutomaticRuntime
     public static void Toggle()
     {
         _enabled.Value = !Enabled; _generation++; _nextProbe = 0;
-        if (!Enabled) Suspend("disabled by F4");
+        if (!Enabled) Suspend("disabled by F9");
     }
     public static void Tick()
     {
