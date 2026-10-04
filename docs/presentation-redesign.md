@@ -192,3 +192,11 @@ All 49 Python tests pass, including existing capture-analysis tests. Both native
 inspection commands succeed. These are offline research checks; no claim of
 native hook compatibility, GPU behavior, display smoothness or completed general
 runtime follows from them.
+
+## Next implementation checkpoint
+
+The separate [presentation adapter audit](presentation-audit.md) now observes
+the native visual-positioning boundary and records camera/map/entity predictions
+without applying corrections. It replaces neither the old smoothing algorithm
+nor its lifecycle. Live agreement remains pending; this is the next evidence
+gate before a replacement renderer.
