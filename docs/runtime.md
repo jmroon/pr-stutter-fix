@@ -1,7 +1,7 @@
 # Automatic runtime and playthrough diagnostics
 
-Timing 0.6.0 / Grid 0.9.0 replace the coordinated 15-second experiment with
-independent, automatic field corrections. Playthrough Diagnostics 0.2.0 is a
+Timing 0.6.1 / Grid 0.9.1 replace the coordinated 15-second experiment with
+independent, automatic field corrections. Playthrough Diagnostics 0.2.1 is a
 separate optional DLL. The correction algorithms are the preceding tested
 cardinal/diagonal algorithms; their lifecycle and observation have changed.
 
@@ -70,12 +70,15 @@ while corrections are suspended; it does not require a field follow target.
 
 The debug sampler discovers active cameras/field entities at most once per second
 (also refreshes after a changed correction context), then samples cached references
-in LateUpdate. It prioritizes the field camera and player, tracks at most two
+in LateUpdate. It prioritizes the logical field camera, tile-render camera and player, tracks at most two
 cameras/eight field entities, and records camera motion even with no field entity.
 It records logical world positions, camera projections, timer/endpoints, correction
 records, QPC timestamps and component states. Pure battle actors that are not
 FieldEntity objects are not tracked individually. Camera/entity discovery remains
-main-thread work and must be profiled in larger scenes.
+main-thread work and must be profiled in larger scenes. Only selected entities
+receive metadata; selection stops at eight. The native scene query still runs.
+The first FFIV capture measured discovery spikes up to 16.5 ms in the preceding
+build, so use diagnostics-off walking for the primary visual comparison.
 
 F11 requests approximately 15 seconds before and 3 seconds after the marker. Fixed
 capacity can shorten this window at high FPS/entity counts: 65,536 motion records,

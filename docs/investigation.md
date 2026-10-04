@@ -1442,3 +1442,15 @@ This source update is not an installation; the installed timed build is unchange
 ### Runtime installation and FFIV preparation
 
 The user authorized installation on 2026-10-04. The FFVI 0.5.1 / 0.8.1 / 0.1.1 set is now installed, with matched previous-DLL backups and verified hashes. FFIV has only the generic loader prerequisites installed; its native movement code has a midpoint timer clamp absent from FFVI. See docs/ffiv-compatibility.md for evidence and the first-launch dependency. Neither installation establishes live correction compatibility in FFIV.
+
+### FFIV first live recording and rendering adaptation
+
+The saved FFIV recordings confirmed that timing/pacing activated but smoothing
+refused the FFVI-only camera count. The final area-2 capture contains 27 carries,
+all persistent, and 30 midpoint clamps (~158.15 ms discarded). The captured layout
+uses two named field cameras and one target. Grid 0.9.1 explicitly supports that
+FFIV topology while retaining the remaining guards and FFVI's original layout.
+Playthrough Diagnostics 0.2.1 separately bounds entity metadata work after the
+capture revealed up to 16.5 ms observer spikes. Both changes passed offline checks
+for FFIV and FFVI; their live results remain unverified. Detailed evidence and
+limitations are in docs/ffiv-compatibility.md; raw captures remain local.

@@ -40,7 +40,7 @@ foreach ($entry in $entries) {
 }
 [ordered]@{
     DeployedUtc=[DateTime]::UtcNow.ToString('o'); Game=$Game; TimingVersion='0.6.1'; GridVersion='0.9.1'
-    PlaythroughDiagnosticsVersion=$(if ($WithoutDiagnostics) { $null } else { '0.2.0' })
+    PlaythroughDiagnosticsVersion=$(if ($WithoutDiagnostics) { $null } else { '0.2.1' })
     CorrectionDefaultEnabled=$true; DebugDefaultEnabled=$false; RuntimeVerified=$false
     Backup=$backup; Files=$entries; GitCommit=(git -C $projectRoot rev-parse HEAD)
     Note='Offline verification passed; live automatic transitions and debug overhead remain to be measured. WithoutDiagnostics skips installation; it does not remove an existing diagnostics plugin.'

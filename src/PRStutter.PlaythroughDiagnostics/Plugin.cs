@@ -6,8 +6,8 @@ using UnityEngine;
 
 namespace PRStutter.PlaythroughDiagnostics;
 
-[BepInPlugin("local.prstutter.playthrough", "PR Stutter Playthrough Diagnostics", "0.2.0")]
-[BepInDependency("local.prstutter.timing", "0.6.0")]
+[BepInPlugin("local.prstutter.playthrough", "PR Stutter Playthrough Diagnostics", "0.2.1")]
+[BepInDependency("local.prstutter.timing", "0.6.1")]
 public sealed class Plugin : BasePlugin
 {
 #if PR_FFIV

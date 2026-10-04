@@ -6,8 +6,8 @@ backed up and installed hashes verified. Automatic transitions remain subject
 to live verification. The local deployment manifest is
 `artifacts/runtime-deployment.json`.
 
-An FFIV preview is now built from the shared runtime; live behavior remains
-unverified. Its generic BepInEx loader
+An FFIV preview is installed from the shared runtime. Initial live evidence
+confirms tile-boundary carry and pacing, but rendering needed a layout adaptation. Its generic BepInEx loader
 was prepared from the existing working local installation with
 `scripts/Prepare-GameLoader.ps1`. This fresh-install helper copies only Doorstop,
 .NET and BepInEx core files; it refuses existing destinations, checks the target
@@ -110,5 +110,36 @@ initial differences.
 | Title | Current evidence |
 | --- | --- |
 | I, II, III, V | Not inspected; no supported build profile |
-| IV | Native inspection, separate adapter and offline checks; live preview pending |
+| IV | Tile carry/pacing activated live; two-camera render adaptation and bounded discovery await retest |
 | VI | Earlier walking algorithms have live evidence; latest automatic lifecycle still needs live transition checks |
+
+## First FFIV capture: underground overworld and castle visit
+
+The log shows timing/pacing activation in area IDs 2 and 39, with smoothing
+refused by the old four-camera/three-target check in both. Saved captures cover
+area 2 only; the exact castle camera layout is not recorded in these captures.
+The final 15.05-second capture contains 27 carried tiles, all preserved in the
+next frame, with maximum reconstructed error approximately 0.00000108 units.
+It also contains 30 native midpoint clamps, estimated to discard 158.15 ms.
+The earlier incident captures overlap this final window; their counts must not
+be added together.
+
+Area 2 camera descriptors show CameraFieldMain and CameraTileMap sharing one
+320x180 target, with the expected orthographic size 90 and tile mask 58867457.
+Grid 0.9.1 accepts exactly this named two-camera/one-target topology for FFIV.
+FFVI retains its named four-camera/three-target topology. Compositor, target
+sharing, additional target users, shaders, player visuals, camera transforms,
+manual control and restoration checks are unchanged. A single render root uses
+the same translation helper with no transparency-camera children. New tests
+reject incomplete, duplicate, cross-game and unknown layouts and exercise
+single-root translation/restoration. This adaptation still needs live verification.
+
+Debug overhead in the final capture averages 0.131 ms but reaches 16.545 ms;
+recurring discovery dominates measured observer work. The previous discovery
+cast every FieldEntity twice and built metadata for hundreds of objects although
+it sampled only eight. Playthrough Diagnostics 0.2.1 finds players directly,
+stops selection at eight unique entities, and describes only selected entities.
+The full native FindObjectsOfType query still runs and is not guaranteed cheap.
+Actual overhead improvement must be measured in a new capture; compare perceived
+smoothness with diagnostics off first. The second sampled camera now prioritizes
+CameraTileMap rather than an auxiliary world-map camera.

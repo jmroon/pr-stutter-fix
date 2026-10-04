@@ -146,10 +146,24 @@ internal static class Playthrough
         foreach (var camera in cameras)
             if (camera.isActiveAndEnabled && camera.name == "CameraFieldMain") AddCamera(camera);
         foreach (var camera in cameras)
-            if (camera.isActiveAndEnabled && camera.name != "CameraFrontFilter" && camera.name != "CameraFieldMain") AddCamera(camera);
+            if (camera.isActiveAndEnabled && camera.name == "CameraTileMap") AddCamera(camera);
+        foreach (var camera in cameras)
+            if (camera.isActiveAndEnabled && camera.name != "CameraFrontFilter" && camera.name != "CameraFieldMain" && camera.name != "CameraTileMap") AddCamera(camera);
+        // Overworlds contain thousands of FieldEntity objects. Find the small
+        // player set directly rather than TryCast every entity twice, then only
+        // construct metadata for the bounded set that will actually be sampled.
+        foreach (var player in UnityEngine.Object.FindObjectsOfType<FieldPlayer>()) {
+            if (Entities.Count >= 8) break;
+            AddEntity(player);
+        }
         var entities = UnityEngine.Object.FindObjectsOfType<FieldEntity>();
-        foreach (var entity in entities) if (entity.TryCast<FieldPlayer>() != null) AddEntity(entity);
-        foreach (var entity in entities) if (entity.TryCast<FieldPlayer>() == null) AddEntity(entity);
+        foreach (var entity in entities) {
+            if (Entities.Count >= 8) break;
+            bool selected = false;
+            foreach (var existing in Entities) if (existing.Pointer == entity.Pointer) { selected = true; break; }
+            if (!selected) AddEntity(entity);
+        }
+        _untrackedEntities += Math.Max(0, entities.Length - Entities.Count);
         _discoveryTicks += Stopwatch.GetTimestamp() - begin;
     }
     private static void AddCamera(Camera camera)
@@ -175,7 +189,7 @@ internal static class Playthrough
         if (Writer.Busy) { Writer.RecordBusyDrop(); _incidents.Complete(); return; }
         long since = now - Stopwatch.Frequency * 18;
         Writer.TrySave(new {
-            SchemaVersion = 1, Game = CorrectionStatus.Game, PluginVersion = "0.2.0", QpcFrequency = Stopwatch.Frequency,
+            SchemaVersion = 1, Game = CorrectionStatus.Game, PluginVersion = "0.2.1", QpcFrequency = Stopwatch.Frequency,
             Display = new { Width = Screen.width, Height = Screen.height, RefreshRate = Screen.currentResolution.refreshRate,
                 Vsync = QualitySettings.vSyncCount, TargetFrameRate = Application.targetFrameRate },
             StartedQpc = _started, SavedQpc = now, TriggerQpc = _incidents.TriggerQpc, Reason = _incidents.Reason,

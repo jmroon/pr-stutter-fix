@@ -10,8 +10,8 @@ have targeted live evidence. The new automatic lifecycle and playthrough debug
 mode pass offline checks but still require in-game transition and overhead checks.
 Unknown cinematic/battle/camera layouts suspend unsupported corrections.
 
-Current components: **Timing 0.6.0**, **Grid 0.9.0**, optional **Playthrough
-Diagnostics 0.2.0**. F9 enables/disables automatic corrections; F10 toggles debug
+Current components: **Timing 0.6.1**, **Grid 0.9.1**, optional **Playthrough
+Diagnostics 0.2.1**. F9 enables/disables automatic corrections; F10 toggles debug
 recording; F11 marks an incident. Smoothing requires CRT off. Debug recording is
 optional and cannot gate correction behavior.
 
@@ -113,7 +113,7 @@ The original configuration remains unchanged in the game; BepInEx remains instal
 The baseline before installing diagnostics is `artifacts/baselines/20261002-152825-701` (119 recorded files).
 The earlier 120-file baseline is retained as historical evidence from before disabling.
 
-PR Stutter Diagnostics 0.2.0 was removed after the user reported an inverted/unstable
+PR Stutter Diagnostics 0.2.1 was removed after the user reported an inverted/unstable
 camera. The user confirmed normal camera behavior after removal. Its DLL, source,
 log, and capture are preserved under `artifacts/disabled-plugins/PRStutter.Diagnostics-regression-20261002-205145/`.
 After rollback, no plugin DLLs remained and the user confirmed normal camera behavior.
