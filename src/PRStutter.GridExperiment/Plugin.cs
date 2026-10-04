@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace PRStutter.GridExperiment;
 
-[BepInPlugin("local.prstutter.grid", "PR Stutter Grid Test", "0.9.1")]
+[BepInPlugin("local.prstutter.grid", "PR Stutter Grid Test", "0.9.2")]
 public sealed class Plugin : BasePlugin
 {
     private Driver? _driver;
@@ -27,7 +27,7 @@ public sealed class Plugin : BasePlugin
         PixelCapture.Register();
         _driver = AddComponent<Driver>();
         ExperimentControls.Ready = true;
-        Test.Note("0.9.1 ready, OFF by default. F9: automatic corrections when the timing plugin is loaded. Standalone-only controls: F6 pixel diagnostic; F7 pacing (90s); F9 4x / F10 8x smoothing (15s). CRT OFF. F6 disabled during a combined test. Ordinary cardinal and diagonal manual walking only.");
+        Test.Note("0.9.2 ready, OFF by default. F9: automatic corrections when the timing plugin is loaded. Standalone-only controls: F6 pixel diagnostic; F7 pacing (90s); F9 4x / F10 8x smoothing (15s). CRT OFF. F6 disabled during a combined test. Ordinary cardinal and diagonal manual walking only.");
     }
     public override bool Unload()
     {
@@ -156,12 +156,13 @@ internal sealed class Session
     private readonly int _width = Screen.width, _height = Screen.height;
     private readonly float _fakeCrt;
     private GridPass? _final;
-    private int _prepared = -1, _frames;
+    private int _frames;
+    private readonly RenderFrameGate _frameGate = new();
     private readonly HashSet<IntPtr> _rendered = new();
     private readonly HashSet<IntPtr> _begun = new();
     public string Mode => $"fractional-motion-{Scale}x";
     public string TargetSize => $"{320 * Scale}x{180 * Scale}";
-    public string Summary => $"mode={Mode}, completedFrames={_frames}, targets={_targets.Count}, textureBindings={_textures.Count}, CRT={_fakeCrt}, {_motion?.Summary}";
+    public string Summary => $"mode={Mode}, completedFrames={_frames}, armed={_frameGate.Armed}, preparedFrame={_frameGate.PreparedFrame}, targets={_targets.Count}, textureBindings={_textures.Count}, CRT={_fakeCrt}, {_motion?.Summary}";
     private static bool Same(Texture? a, Texture? b) => a == null ? b == null : b != null && a.Pointer == b.Pointer;
     private static bool Exact(Vector3 a, Vector3 b) => a.x == b.x && a.y == b.y && a.z == b.z;
 
@@ -291,12 +292,12 @@ internal sealed class Session
         foreach (var t in _targets) if (t.High == null || !t.High.IsCreated()) throw new InvalidOperationException("Owned target lost.");
         foreach (var c in _cameras) c.Override.Apply(c.Target.High!);
         foreach (var b in _textures) b.Override.Apply(b.Target.High!);
-        _rendered.Clear(); _begun.Clear(); _prepared = Time.frameCount;
+        _rendered.Clear(); _begun.Clear(); _frameGate.Prepared(Time.frameCount);
     }
     public void Before(GridPass pass)
     {
+        if (!_frameGate.AcceptCallback(Time.frameCount)) return;
         ValidateScene();
-        if (_prepared != Time.frameCount) throw new InvalidOperationException("Camera rendered before target preparation.");
         foreach (var c in _cameras) if (!Same(c.Camera.targetTexture, c.Target.High)) throw new InvalidOperationException("Render target overwritten before draw.");
         foreach (var b in _textures) if (b.Material == null || !Same(b.Material.GetTexture(b.Property), b.Target.High)) throw new InvalidOperationException("Texture binding overwritten before draw.");
         for (int i = 0; i < _biases.Count; i++) {
@@ -311,7 +312,7 @@ internal sealed class Session
     }
     public void After(GridPass pass)
     {
-        if (_prepared != Time.frameCount) throw new InvalidOperationException("Post-render without prepared targets.");
+        if (!_frameGate.AcceptCallback(Time.frameCount)) return;
         if (IsFinal(pass)) {
             if (_rendered.Count != _cameras.Count) throw new InvalidOperationException("Post-compositor before every admitted field camera completed.");
             _frames++;
@@ -325,7 +326,7 @@ internal sealed class Session
         try { _motion?.Restore(); } catch (Exception e) { error = e; }
         foreach (var b in _textures) try { b.Override.Restore(); } catch (Exception e) { error ??= e; }
         foreach (var c in _cameras) try { c.Override.Restore(); } catch (Exception e) { error ??= e; }
-        _prepared = -1;
+        _frameGate.Restored();
         if (error != null) throw error;
     }
     public void Dispose()

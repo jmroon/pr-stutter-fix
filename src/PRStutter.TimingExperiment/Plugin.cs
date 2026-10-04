@@ -19,8 +19,8 @@ using ArrivalIterator = Last.Map.FootMonitoring._UpdateMonitor_d__41;
 
 namespace PRStutter.TimingExperiment;
 
-[BepInPlugin("local.prstutter.timing", "PR Stutter Tile Timing Test", "0.6.1")]
-[BepInDependency("local.prstutter.grid", "0.9.1")]
+[BepInPlugin("local.prstutter.timing", "PR Stutter Tile Timing Test", "0.6.2")]
+[BepInDependency("local.prstutter.grid", "0.9.2")]
 public sealed class Plugin : BasePlugin
 {
 #if PR_FFIV
@@ -37,7 +37,7 @@ public sealed class Plugin : BasePlugin
         Timing.Log = Log;
         AutomaticRuntime.Initialize(Config);
         _driver = AddComponent<Driver>();
-        Timing.Note("0.6.1 automatic field corrections ready. F9 enables/disables; timing, pacing and smoothing suspend independently. No duration limit. CRT OFF for smoothing. Diagnostics optional.");
+        Timing.Note("0.6.2 automatic field corrections ready. F9 enables/disables; timing, pacing and smoothing suspend independently. No duration limit. CRT OFF for smoothing. Diagnostics optional.");
     }
     public override bool Unload()
     {

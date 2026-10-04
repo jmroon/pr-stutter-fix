@@ -9,6 +9,26 @@ using PRStutter.RenderExperiment;
 using PRStutter.GridExperiment;
 
 static void Check(bool value, string why) { if (!value) throw new Exception(why); }
+// Exercise both possible LateUpdate orderings using the actual callback gate.
+foreach (bool activateAfterRenderDriver in new[] { false, true }) {
+    var gate = new RenderFrameGate();
+    if (activateAfterRenderDriver) {
+        Check(!gate.AcceptCallback(10) && !gate.AcceptCallback(10), "Startup must ignore both pre/post callbacks before first preparation");
+        gate.Restored(); // Next Update's recovery must not arm the session.
+        Check(!gate.AcceptCallback(11), "Restoration unexpectedly armed rendering");
+    }
+    gate.Prepared(11);
+    Check(gate.AcceptCallback(11), "Prepared frame rejected");
+    gate.Restored();
+    bool refused = false;
+    try { gate.AcceptCallback(11); } catch (InvalidOperationException) { refused = true; }
+    Check(refused, "Extra callbacks after restoration silently accepted");
+    gate.Prepared(12); Check(gate.AcceptCallback(12), "Next prepared frame rejected");
+    refused = false;
+    try { gate.AcceptCallback(13); } catch (InvalidOperationException) { refused = true; }
+    Check(refused, "Missing later preparation silently accepted");
+}
+Console.WriteLine("PASS: automatic activation before/after render-driver LateUpdate, first-frame stock fallback, and strict callbacks after arming.");
 var ffivCameras = new[] { "CameraFieldMain", "CameraTileMap" };
 var ffviCameras = new[] { "CameraFieldMain", "CameraTileMap", "CameraUpperTransparentRT", "CameraCeilTransparentRT" };
 Check(FieldLayoutPolicy.Accepts("FFIV", ffivCameras, 1), "Recorded FFIV shared-target layout rejected");
