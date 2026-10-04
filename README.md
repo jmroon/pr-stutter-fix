@@ -17,6 +17,8 @@ optional and cannot gate correction behavior.
 
 **[Runtime controls, architecture, installation, rollback and verification](docs/runtime.md)**
 
+FFIV support is being investigated; its correction port is not installed or verified. See [FFIV compatibility preparation](docs/ffiv-compatibility.md).
+
 The repository contains source, tests and investigation notes. Game assemblies,
 assets, generated interop assemblies, native dumps, recordings, downloaded tools
 and build outputs stay local. Building requires your own game installation with

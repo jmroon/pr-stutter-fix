@@ -1438,3 +1438,7 @@ suppress legacy standalone experiment actions, including their F9/F10 actions.
 F8 remains an optional specialist field/render-hierarchy capture, unnecessary
 for routine playthrough testing and independent of the correction runtime.
 This source update is not an installation; the installed timed build is unchanged.
+
+### Runtime installation and FFIV preparation
+
+The user authorized installation on 2026-10-04. The FFVI 0.5.1 / 0.8.1 / 0.1.1 set is now installed, with matched previous-DLL backups and verified hashes. FFIV has only the generic loader prerequisites installed; its native movement code has a midpoint timer clamp absent from FFVI. See docs/ffiv-compatibility.md for evidence and the first-launch dependency. Neither installation establishes live correction compatibility in FFIV.
