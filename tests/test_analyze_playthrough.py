@@ -40,6 +40,26 @@ class PlaythroughAnalysisTests(unittest.TestCase):
         self.assertEqual(report['persistence']['preserved'],1)
         self.assertLess(report['max_carried_error_units'],1e-12)
 
+    def test_ffiv_midpoint_is_observed_without_claiming_a_correction(self):
+        data = self.fixture(); data['Game'] = 'FFIV'
+        before = dict(Sx=0,Sy=0,Dx=16,Dy=0,Timer=.095,Duration=.2,X=8,Y=0)
+        after = dict(before,Timer=.1)
+        data['Movement'] = [dict(Action='ordinary',Sample=dict(Frame=1,Delta=.01,Before=before),After=after,Final=after)]
+        report = analysis.summarize(data)
+        self.assertEqual(report['native_midpoint_candidates'],1)
+        self.assertAlmostEqual(report['native_midpoint_discarded_ms'],5)
+        self.assertEqual(report['carried_tiles'],0)
+        data['Game'] = 'FFVI'
+        self.assertEqual(analysis.summarize(data)['native_midpoint_candidates'],0)
+
+    def test_ffiv_midpoint_rejects_state_changes_and_long_frames(self):
+        data = self.fixture(); data['Game'] = 'FFIV'
+        before = dict(Sx=0,Sy=0,Dx=16,Dy=0,Timer=.095,Duration=.2,X=8,Y=0)
+        for delta, after in [(.01,dict(before,Timer=.1,Dx=32)), (.1,dict(before,Timer=.1)),
+                             (.01,dict(before,Timer=.105)), (.01,dict(before,Timer=.1,X=9))]:
+            data['Movement'] = [dict(Action='ordinary',Sample=dict(Frame=1,Delta=delta,Before=before),After=after,Final=after)]
+            self.assertEqual(analysis.summarize(data)['native_midpoint_candidates'],0)
+
     def test_schema_refused(self):
         data = self.fixture(); data['SchemaVersion'] = 99
         with self.assertRaises(ValueError): analysis.summarize(data)

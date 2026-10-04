@@ -34,6 +34,27 @@ def summarize(data):
                 after = n[start] + (n[dest] - n[start]) * n['Timer'] / n['Duration']
                 expected = (b[dest] - b[start]) * s['Delta'] / b['Duration']
                 errors.append(abs(after - before - expected))
+    midpoint_losses = []
+    if data.get('Game') == 'FFIV':
+        for row in movement:
+            if row['Action'] != 'ordinary' or 'After' not in row:
+                continue
+            b, a, dt = row['Sample']['Before'], row['After'], row['Sample']['Delta']
+            values = [dt] + [v[k] for v in (b, a) for k in ('Sx','Sy','Dx','Dy','Timer','Duration','X','Y')]
+            if not all(isinstance(v, (int, float)) and math.isfinite(v) for v in values):
+                continue
+            dx, dy = abs(b['Dx'] - b['Sx']), abs(b['Dy'] - b['Sy'])
+            if (dx, dy) not in ((16, 0), (0, 16), (16, 16)):
+                continue
+            expected_duration = .2 * (math.sqrt(2) if dx and dy else 1)
+            half = b['Duration'] * .5
+            if (abs(b['Duration'] - expected_duration) > 1e-6 or not 0 < dt <= .05 or
+                not 0 <= b['Timer'] < half or not half < b['Timer'] + dt < b['Duration'] or
+                any(b[k] != a[k] for k in ('Sx','Sy','Dx','Dy','Duration')) or
+                abs(a['Timer'] - half) > 1e-7 or
+                a['X'] != (b['Sx'] + b['Dx']) * .5 or a['Y'] != (b['Sy'] + b['Dy']) * .5):
+                continue
+            midpoint_losses.append(b['Timer'] + dt - half)
     series = defaultdict(list)
     for row in data['Motion']:
         series[(row['CameraId'], row['EntityId'])].append(row)
@@ -62,7 +83,8 @@ def summarize(data):
                            zero_steps_while_entity_timer_active=stopped_steps,
                            active_timer_intervals=intervals))
     costs = [f['ObserverTicks'] * 1000 / hz for f in frames]
-    return dict(reason=data['Reason'], captured_frames=len(frames),
+    return dict(game=data.get('Game', 'unknown'), native_midpoint_candidates=len(midpoint_losses),
+                native_midpoint_discarded_ms=sum(midpoint_losses) * 1000, reason=data['Reason'], captured_frames=len(frames),
                 actions=dict(Counter(r['Action'] for r in movement)), carried_tiles=len(carried),
                 diagonal_carries=sum(r['Sample']['Before']['Sx'] != r['Sample']['Before']['Dx'] and
                                      r['Sample']['Before']['Sy'] != r['Sample']['Before']['Dy'] for r in carried),

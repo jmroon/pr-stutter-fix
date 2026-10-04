@@ -10,14 +10,14 @@ have targeted live evidence. The new automatic lifecycle and playthrough debug
 mode pass offline checks but still require in-game transition and overhead checks.
 Unknown cinematic/battle/camera layouts suspend unsupported corrections.
 
-Current components: **Timing 0.5.1**, **Grid 0.8.1**, optional **Playthrough
-Diagnostics 0.1.1**. F9 enables/disables automatic corrections; F10 toggles debug
+Current components: **Timing 0.6.0**, **Grid 0.9.0**, optional **Playthrough
+Diagnostics 0.2.0**. F9 enables/disables automatic corrections; F10 toggles debug
 recording; F11 marks an incident. Smoothing requires CRT off. Debug recording is
 optional and cannot gate correction behavior.
 
 **[Runtime controls, architecture, installation, rollback and verification](docs/runtime.md)**
 
-FFIV support is being investigated; its correction port is not installed or verified. See [FFIV compatibility preparation](docs/ffiv-compatibility.md).
+An FFIV preview now builds from the shared runtime with a separate game adapter. Its native midpoint timing remains unchanged, and live behavior needs verification. See [FFIV compatibility preparation](docs/ffiv-compatibility.md).
 
 The repository contains source, tests and investigation notes. Game assemblies,
 assets, generated interop assemblies, native dumps, recordings, downloaded tools

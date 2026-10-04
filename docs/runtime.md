@@ -1,9 +1,13 @@
 # Automatic runtime and playthrough diagnostics
 
-Timing 0.5.1 / Grid 0.8.1 replace the coordinated 15-second experiment with
-independent, automatic field corrections. Playthrough Diagnostics 0.1.1 is a
+Timing 0.6.0 / Grid 0.9.0 replace the coordinated 15-second experiment with
+independent, automatic field corrections. Playthrough Diagnostics 0.2.0 is a
 separate optional DLL. The correction algorithms are the preceding tested
 cardinal/diagonal algorithms; their lifecycle and observation have changed.
+
+FFVI is the default build profile. An FFIV preview uses separate generated bindings,
+binary gates and build outputs; its native midpoint timing remains unchanged.
+See [FFIV compatibility](ffiv-compatibility.md) for scope and collection planning.
 
 ## Controls and configuration
 
@@ -117,7 +121,8 @@ calling debug mode negligible-cost. F10 off releases the large ring buffers.
 Close the game, then run:
 
 ```powershell
-./scripts/Deploy-Runtime.ps1
+./scripts/Deploy-Runtime.ps1 # FFVI
+./scripts/Deploy-Runtime.ps1 -Game FFIV # experimental FFIV profile
 # Or skip installing the optional debug DLL:
 ./scripts/Deploy-Runtime.ps1 -WithoutDiagnostics
 ```

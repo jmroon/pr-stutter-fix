@@ -6,7 +6,8 @@ backed up and installed hashes verified. Automatic transitions remain subject
 to live verification. The local deployment manifest is
 `artifacts/runtime-deployment.json`.
 
-FFIV is not yet supported by the correction build. Its generic BepInEx loader
+An FFIV preview is now built from the shared runtime; live behavior remains
+unverified. Its generic BepInEx loader
 was prepared from the existing working local installation with
 `scripts/Prepare-GameLoader.ps1`. This fresh-install helper copies only Doorstop,
 .NET and BepInEx core files; it refuses existing destinations, checks the target
@@ -43,7 +44,71 @@ at RVA `0x688BA0`; FFVI uses `d__41`. FFIV's inspected iterator retains wait sta
 `0x68E790` sets Running, and `EnumeratorTaskProcess.Update` at `0x52A360` steps a
 running iterator. These similarities do not establish complete hook compatibility.
 
-Next: launch FFIV to the title screen and close it; inspect the generated bindings,
-finish verifying scheduler/player/camera ordering and rendering assumptions,
-then build a separately gated FFIV adaptation. Do not bypass the FFVI hash gate
-or install the FFVI binaries as if they supported FFIV.
+## Preview adapter and verification
+
+FFIV first launch completed and generated its own bindings. The shared runtime
+now builds separately with `-p:PrGame=FFIV` against those bindings. FFVI remains
+the default profile. FFIV build/intermediate outputs use `bin/FFIV` and `obj/FFIV`
+so they cannot replace FFVI outputs. Compile checks require the corresponding
+game data directory; deployment verifies the exact DLL/metadata hashes first.
+Runtime gates also reject a mixed Timing/Grid profile; optional diagnostics
+checks the runtime's game identity before subscribing.
+
+`GameProfile.cs` isolates binary identity, vehicle checks and queued-path access.
+FFIV has no `IsRiging` or public `MovementPositionList` property: its adapter
+requires Walk state, rejects takeoff/landing and low flying, and reads the native
+`movementPositionList` field. The arrival iterator alias is selected at compile
+time. The carry algorithm, task admission policy and rendering algorithm remain
+shared. No additional game writes or native hooks were introduced.
+
+The preview deliberately preserves FFIV's midpoint clamp. The inspected character
+update also computes collider offsets from its current/destination positions, and
+sprite animation reads the movement timer. Their relationship to the clamp needs
+live evidence before any further intervention. The panel labels this limitation.
+Diagnostics include the game identity; the offline analyzer reports matching
+midpoint clamps and estimated discarded milliseconds from Before/After records.
+These observations require timing to be active and diagnostic recording enabled;
+they do not report a correction or prove visible jitter.
+
+Native MainGame.Update processes its task machine before the main-game subscene
+controller. FieldController.UpdateController updates the camera before visual
+instances. The five hooks retain their existing identity, fresh-input,
+exclusive-arrival, manual-control and same-frame guards. Actual callback order,
+carry persistence and camera layouts still need the first live FFIV capture.
+
+Both profile builds and existing timing/rendering/diagnostic audits pass, including
+800 simulated lifecycle transitions. The compiled timing audit checks that each
+profile references its own arrival iterator and excludes the other's. Both
+cross-game deployment profile mismatches are rejected. All 39 Python tests pass,
+including midpoint candidate detection and refusal on changed state/long frames.
+These checks do not establish live FFIV compatibility.
+
+Build/install the preview with the game closed:
+
+```powershell
+./scripts/Deploy-Runtime.ps1 -Game FFIV
+```
+
+Controls match FFVI: F9 corrections, F10 diagnostics, F11 incident marker. Start
+in an ordinary manual walking area with CRT off. Turn on F10, walk and stop,
+change direction, and use F11 after any visible issue. Let three seconds pass,
+then F10 off to save. Check the three component statuses; suspension is evidence
+of an unsupported context, not permission to remove a guard. FFIV's old F8
+specialist logger is not ported or installed by this runtime deployment.
+
+## Collection compatibility plan
+
+Treat each executable/build as a separate profile, even if signatures compile.
+For each title, first inventory hashes and generate bindings; inspect movement
+update, tile completion, task ownership, vehicle guards and render assumptions;
+then run a small live matrix: ordinary walking/turning/stopping, camera clamps,
+menu/focus recovery, and a scripted movement/battle transition. Use diagnostics
+to identify broader playthrough requirements. A title-screen boot alone is not
+compatibility validation. Full-game testing is not required to identify these
+initial differences.
+
+| Title | Current evidence |
+| --- | --- |
+| I, II, III, V | Not inspected; no supported build profile |
+| IV | Native inspection, separate adapter and offline checks; live preview pending |
+| VI | Earlier walking algorithms have live evidence; latest automatic lifecycle still needs live transition checks |
