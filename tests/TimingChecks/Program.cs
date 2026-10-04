@@ -83,6 +83,7 @@ ArrivalAdmissionChecks.Run();
 CombinedRunChecks.Run();
 DiagonalChecks.Run();
 ObserverChecks.Run();
+AutomaticChecks.Run();
 
 // A separate gameplay experiment has a separate, explicit mutation surface.
 using var stream = File.OpenRead(args[0]);

@@ -49,7 +49,7 @@ internal static class TimingCapture
                 for (int j = 0; j < fields.Length; j++) { if (j > 0) text.Append(','); text.Append(Convert.ToString(fields[j], CultureInfo.InvariantCulture)); }
                 text.Append('\n');
             }
-            File.WriteAllText(stem + ".txt", $"Version: 0.4.0\nQPC frequency: {Stopwatch.Frequency}\nStop: {reason}\nDropped rows: {dropped}\nNo GPU readback. Recording capacity does not stop corrections.\n");
+            File.WriteAllText(stem + ".txt", $"Version: 0.5.0\nQPC frequency: {Stopwatch.Frequency}\nStop: {reason}\nDropped rows: {dropped}\nNo GPU readback. Recording capacity does not stop corrections.\n");
             File.WriteAllText(stem + ".csv", text.ToString());
             Timing.Note("TIMING SAVED " + stem + ".csv");
         } catch (Exception e) { Timing.Note("TIMING SAVE FAILED " + e.Message); }

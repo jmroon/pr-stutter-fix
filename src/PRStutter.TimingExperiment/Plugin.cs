@@ -15,8 +15,8 @@ using Row = PRStutter.TimingExperiment.MovementObservation;
 
 namespace PRStutter.TimingExperiment;
 
-[BepInPlugin("local.prstutter.timing", "PR Stutter Tile Timing Test", "0.4.0")]
-[BepInDependency("local.prstutter.grid", "0.7.0")]
+[BepInPlugin("local.prstutter.timing", "PR Stutter Tile Timing Test", "0.5.0")]
+[BepInDependency("local.prstutter.grid", "0.8.0")]
 public sealed class Plugin : BasePlugin
 {
     private Driver? _driver;
@@ -26,8 +26,9 @@ public sealed class Plugin : BasePlugin
             !Matches("FINAL FANTASY VI_Data/il2cpp_data/Metadata/global-metadata.dat", "f50d9d1ff84f8033b8acbdc6845ab3a0f2793dd253c36a4a7d212303980844dd"))
         { Log.LogError("Unsupported build; timing test disabled."); return; }
         Timing.Log = Log;
+        AutomaticRuntime.Initialize(Config);
         _driver = AddComponent<Driver>();
-        Timing.Note("0.4.0 ready, OFF. Panel button or F4: combined timing/pacing/8x smoothing for 15 seconds; repeat to stop and save. F5 still runs timing alone for 30 seconds. Cardinal and diagonal manual walks supported. Key/button activations are logged. CRT OFF. No hooks before activation; F6 disabled during combined testing.");
+        Timing.Note("0.5.0 automatic field corrections ready. F4 enables/disables; timing, pacing and smoothing suspend independently. No duration limit. CRT OFF for smoothing. Diagnostics optional.");
     }
     public override bool Unload()
     {
@@ -50,7 +51,7 @@ public sealed class Driver : MonoBehaviour
         try { TestPanel.CheckPanel(); TestPanel.Tick(); Timing.Tick(); TestPanel.Poll(); }
         catch (Exception e) { TestPanel.Fault(e); Timing.FinishPending(); }
     }
-    public void LateUpdate() { try { Timing.FinishPending(); TestPanel.Poll(); } catch (Exception e) { TestPanel.Fault(e); } }
+    public void LateUpdate() { try { Timing.FinishPending(); AutomaticRuntime.Tick(); } catch (Exception e) { TestPanel.Fault(e); } }
     public void OnGUI() { TestPanel.Draw(); }
     public void OnApplicationFocus(bool focused) { if (!focused) try { TestPanel.FocusLost(); } catch (Exception e) { TestPanel.Fault(e); } }
     public void OnApplicationQuit() { try { TestPanel.Stop("quit"); } finally { Timing.WaitForSave(); } }

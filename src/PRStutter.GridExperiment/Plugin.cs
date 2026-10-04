@@ -14,7 +14,7 @@ using UnityEngine;
 
 namespace PRStutter.GridExperiment;
 
-[BepInPlugin("local.prstutter.grid", "PR Stutter Grid Test", "0.7.0")]
+[BepInPlugin("local.prstutter.grid", "PR Stutter Grid Test", "0.8.0")]
 public sealed class Plugin : BasePlugin
 {
     private Driver? _driver;
@@ -28,7 +28,7 @@ public sealed class Plugin : BasePlugin
         PixelCapture.Register();
         _driver = AddComponent<Driver>();
         ExperimentControls.Ready = true;
-        Test.Note("0.7.0 ready, OFF by default. F4: coordinated 15s comparison via the timing plugin and status panel. Separate controls: F6 pixel diagnostic; F7 pacing (90s); F9 4x / F10 8x smoothing (15s). CRT OFF. F6 disabled during a combined test. Ordinary cardinal and diagonal manual walking only.");
+        Test.Note("0.8.0 ready, OFF by default. F4: automatic corrections via the timing plugin and status panel. Separate controls: F6 pixel diagnostic; F7 pacing (90s); F9 4x / F10 8x smoothing (15s). CRT OFF. F6 disabled during a combined test. Ordinary cardinal and diagonal manual walking only.");
     }
     public override bool Unload()
     {
@@ -264,7 +264,7 @@ internal sealed class Session
     }
     private void ValidateScene()
     {
-        if (_player == null || _following == null || _following.TargetEntity == null ||
+        if (!Application.isFocused || _player == null || _following == null || _following.TargetEntity == null ||
             _following.TargetEntity.Pointer != _player.Pointer || (int)_player.moveState != 0 ||
             _player.IsAutoMoving || _player.IsRiging ||
             !_controllers.Exists(c => c != null && c.isActiveAndEnabled && c.InputEnable && c.fieldPlayer != null && c.fieldPlayer.Pointer == _player.Pointer))
