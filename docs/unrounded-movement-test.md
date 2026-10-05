@@ -259,3 +259,24 @@ timing and pacing settings identical: those components were disabled here, so
 this result cannot attribute the earlier improvement to compensation alone.
 There is no new deployed runtime change in this evidence checkpoint. Captures,
 log and analyzer output remain local in `artifacts/ff6/unrounded-resolution-first/`.
+
+## Coordinated build verification and installation
+
+Both FFIV and FFVI builds passed with zero warnings/errors. Native patch
+fingerprints and executable-memory restore tests passed for both profiles, as did
+render ownership/order checks and the compiled auditor's read-only checks.
+Timing checks cover 179,040 cardinal and 179,040 diagonal simulated frames per
+profile across rounded/fractional modes and steady/jittered 30–360 FPS. All 62
+Python tests passed, including A/B carry attribution and invalid-state exclusion.
+A six-file FFVI deployment/rollback round trip restored every previous DLL/config
+hash exactly before final reinstallation. These are offline checks, not live
+proof of smoothness or full-game compatibility.
+
+Final local bundle manifests (under `artifacts/plugin-backups/`):
+
+- FFVI: `comparison-FFVI-20261005-023902-800/manifest.json`
+- FFIV: `comparison-FFIV-20261005-023909-047/manifest.json`
+
+Both are complete and record `RuntimeVerified=false`; live A/B results are pending.
+The earlier FFVI rollback-round-trip manifest describes an already-restored
+installation and must not be used as the current uninstall manifest.

@@ -27,7 +27,7 @@ Copy-Item -LiteralPath $source -Destination $destination -Force
 $hash = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
 if ((Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash -ne $hash) { throw 'Deployment hash mismatch.' }
 [ordered]@{
-    PluginVersion='0.6.2'; Destination=$destination; Sha256=$hash; Installed=$true
+    PluginVersion='0.6.3'; Destination=$destination; Sha256=$hash; Installed=$true
     DeployedUtc=[DateTime]::UtcNow.ToString('o'); EnabledByDefault=$true; HooksInstalledByDefault=$false
     ToggleKey='F9'; MaximumDurationSeconds=$null; RuntimeVerified=$false
     Automatic=$true; PanelButton=$true; LegacyTimingCsvByDefault=$false; StatusPanel=$true; RequiredGridVersion='0.9.2'
