@@ -21,7 +21,7 @@ def summarize(data):
     experiment_samples = 0
     by_condition = defaultdict(lambda: {k: Counter() for k in checks})
     fractional = defaultdict(Counter)
-    comparable = ('runtime-absent', 'corrections-disabled', 'unrounded-movement', 'unrounded-movement-8x', 'timing-pacing', 'timing-pacing-unrounded-8x')
+    comparable = ('runtime-absent', 'corrections-disabled', 'unrounded-movement', 'unrounded-movement-8x', 'timing-pacing', 'timing-pacing-unrounded-stock', 'timing-pacing-unrounded-8x')
     resolution_frames = {}
     carried_deltas = Counter()
     previous_carry = None
@@ -65,7 +65,7 @@ def summarize(data):
             continue
         clean = s['Baseline'] in comparable
         clean_samples += s['Baseline'] in ('runtime-absent', 'corrections-disabled')
-        experiment_samples += s['Baseline'] in ('unrounded-movement', 'unrounded-movement-8x', 'timing-pacing', 'timing-pacing-unrounded-8x')
+        experiment_samples += s['Baseline'] in ('unrounded-movement', 'unrounded-movement-8x', 'timing-pacing', 'timing-pacing-unrounded-stock', 'timing-pacing-unrounded-8x')
         carried = s.get('CarriedTiles')
         if isinstance(carried, int) and carried >= 0:
             if (previous_carry and previous_carry[0] == s['Baseline'] and carried >= previous_carry[1]

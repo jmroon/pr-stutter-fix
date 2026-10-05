@@ -20,7 +20,7 @@ public static class ExperimentStatus
     public static int ResolutionCompletedFrames => Resolution.CompletedFrames;
 }
 
-[BepInPlugin("local.prstutter.unrounded", "PR Stutter Unrounded Movement Test", "0.3.0")]
+[BepInPlugin("local.prstutter.unrounded", "PR Stutter Unrounded Movement Test", "0.3.1")]
 public sealed class Plugin : BasePlugin
 {
     private Driver? _driver;
@@ -29,7 +29,7 @@ public sealed class Plugin : BasePlugin
         Experiment.Log = Log;
         try {
             Experiment.Initialize(); ClassInjector.RegisterTypeInIl2Cpp<ResolutionPass>(); _driver = AddComponent<Driver>();
-            Log.LogInfo($"{Experiment.Game} comparison 0.3.0 ready, OFF. Shift+F11 starts A/stops; Alt+F11 switches A/B; Ctrl+F11 records. A=timing+pacing, B=timing+pacing+unrounded+8x. CRT OFF. Old compensation OFF in both.");
+            Log.LogInfo($"{Experiment.Game} resolution comparison 0.3.1 ready, OFF. Shift+F11 starts A/stops; Alt+F11 switches A/B; Ctrl+F11 records. Timing+pacing+unrounded stay ON in both. A=stock resolution; B=8x. CRT OFF. Old compensation OFF in both.");
         } catch (Exception e) { Experiment.Fault(e); }
     }
     public override bool Unload()
@@ -60,9 +60,9 @@ internal static class Experiment
     public static string State => _fault || Resolution.Faulted || _patches?.Faulted == true ? "fault" : _patches?.Enabled == true ? "on" : "off";
     public static string ComparisonMode => !_running ? "off" : State == "fault" || !RuntimeBridge.Healthy ? "comparison-invalid" :
         _modeB && _patches?.Enabled == true && Resolution.RequestedScale == 8 && RuntimeBridge.Unrounded ? "timing-pacing-unrounded-8x" :
-        !_modeB && _patches?.Enabled != true && Resolution.RequestedScale == 1 && !RuntimeBridge.Unrounded ? "timing-pacing" : "comparison-invalid";
+        !_modeB && _patches?.Enabled == true && Resolution.RequestedScale == 1 && RuntimeBridge.Unrounded ? "timing-pacing-unrounded-stock" : "comparison-invalid";
     public static string Label => _running ?
-        $"COMPARISON {(_modeB ? "B: timing + pacing + unrounded + 8x" : "A: timing + pacing ONLY")} | {ComparisonMode} | carried {RuntimeBridge.Carried} | {Math.Max(0, (_deadline - Stopwatch.GetTimestamp()) / Stopwatch.Frequency)}s\nShift+F11 STOP | Alt+F11 A/B | Ctrl+F11 record | compensation OFF" :
+        $"RESOLUTION {(_modeB ? "B: 8x (2560x1440)" : "A: STOCK (320x180)")} | timing + pacing + unrounded ON | carried {RuntimeBridge.Carried} | {Math.Max(0, (_deadline - Stopwatch.GetTimestamp()) / Stopwatch.Frequency)}s\nShift+F11 STOP | Alt+F11 A/B | Ctrl+F11 record | compensation OFF" :
         "COMPARISON OFF | Shift+F11 starts A | " + _note;
     public static void Initialize()
     {
@@ -101,8 +101,10 @@ internal static class Experiment
             if (State == "fault" || _patches == null) return;
             _deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
             try {
-                RuntimeBridge.Start(_deadline); _running = true; _modeB = false;
-                Log?.LogInfo("COMPARISON A: " + RuntimeBridge.Status + "; native rounding, stock resolution; 120s.");
+                RuntimeBridge.Start(_deadline);
+                _patches.Set(true); RuntimeBridge.SetUnrounded(true);
+                _running = true; _modeB = false;
+                Log?.LogInfo("COMPARISON A: " + RuntimeBridge.Status + "; unrounded movement, stock resolution; 120s.");
             } catch (Exception e) { Stop("start refused: " + e.Message); }
         } catch (Exception e) { Fault(e); }
     }
@@ -111,9 +113,8 @@ internal static class Experiment
         if (!RuntimeBridge.Healthy) { Stop("timing/pacing unavailable"); return; }
         if (_modeB) {
             if (!Resolution.Stop("comparison A")) throw new InvalidOperationException("Resolution restoration failed");
-            _patches!.Restore(); RuntimeBridge.SetUnrounded(false); _modeB = false;
+            _modeB = false;
         } else {
-            _patches!.Set(true); RuntimeBridge.SetUnrounded(true);
             Resolution.Toggle();
             if (Resolution.RequestedScale != 8) { Stop("B refused: " + Resolution.Note); return; }
             _modeB = true;

@@ -72,7 +72,7 @@ internal static class Observer
         // stale snapshot to admit a coordinated comparison.
         if (_comparisonMode != null) {
             string? mode = _comparisonMode.GetValue(null) as string;
-            if (mode is "timing-pacing" or "timing-pacing-unrounded-8x") return mode;
+            if (mode is "timing-pacing" or "timing-pacing-unrounded-stock" or "timing-pacing-unrounded-8x") return mode;
             if (mode != "off") return "comparison-invalid";
         }
         if (_runtimePresent) {
@@ -114,7 +114,7 @@ internal static class Observer
         var camera = follow?.camera;
         string baseline = Baseline();
         _baseline = baseline;
-        string scope = baseline is "runtime-absent" or "corrections-disabled" or "unrounded-movement" or "unrounded-movement-8x" or "timing-pacing" or "timing-pacing-unrounded-8x" ? "" : baseline;
+        string scope = baseline is "runtime-absent" or "corrections-disabled" or "unrounded-movement" or "unrounded-movement-8x" or "timing-pacing" or "timing-pacing-unrounded-stock" or "timing-pacing-unrounded-8x" ? "" : baseline;
         if (follow == null || map == null || model == null || target == null || camera == null || field.player == null) {
             _rows!.Add(qpc, new { Qpc = qpc, Frame = Time.frameCount, Area = field.currentAreaId, Baseline = baseline, Status = "missing-field-input" });
             _samples++; return;
@@ -211,7 +211,7 @@ internal static class Observer
         Window.Stop();
         var rows = _rows!.Snapshot(0); long overwritten = _rows.Overwritten; _rows = null;
         Writer.TrySave(new {
-            SchemaVersion = 1, Kind = "presentation-adapter-audit", Game = Plugin.Game, Version = "0.1.3",
+            SchemaVersion = 1, Kind = "presentation-adapter-audit", Game = Plugin.Game, Version = "0.1.4",
             QpcFrequency = Stopwatch.Frequency, StartedQpc = _started, SavedQpc = Stopwatch.GetTimestamp(), Reason = reason,
             Phase = "FieldController.UpdateVisualInstancePosition.postfix", Samples = rows,
             Overhead = new { SampleCount = _samples, TotalTicks = _ticks, MaxTicks = _maxTicks, Overwritten = overwritten },

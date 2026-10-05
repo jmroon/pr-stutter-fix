@@ -28,6 +28,23 @@ class AuditAnalysisTests(unittest.TestCase):
         self.assertEqual(result['checks_by_condition']['comparison-invalid']['camera'],
                          {'baseline-excluded': 1})
 
+    def test_stock_unrounded_comparison_is_distinct_from_old_a(self):
+        d = self.fixture()
+        modes = ['timing-pacing', 'timing-pacing-unrounded-stock',
+                 'timing-pacing-unrounded-stock', 'timing-pacing-unrounded-8x',
+                 'timing-pacing-unrounded-stock', 'comparison-invalid']
+        d['Samples'] = [self.sample(i*50, baseline=m) for i, m in enumerate(modes)]
+        for i, row in enumerate(d['Samples']):
+            row['CarriedTiles'] = i*2
+            row['Entities'][0]['LogicalWorld'] = dict(X=.25,Y=0)
+        result = audit.summarize(d)
+        self.assertEqual(result['experiment_samples'], 5)
+        self.assertEqual(result['clean_samples'], 0)
+        self.assertEqual(result['checks_by_condition']['timing-pacing-unrounded-stock']['camera'], {'match':3})
+        self.assertEqual(result['timing_carried_tiles_observed']['timing-pacing-unrounded-stock'], 2)
+        self.assertEqual(result['fractional_logical_observations']['timing-pacing-unrounded-stock']['player'], 3)
+        self.assertEqual(result['checks_by_condition']['comparison-invalid']['camera'], {'baseline-excluded':1})
+
     def test_resolution_mode_is_separate_and_reports_actual_completed_frames(self):
         d=self.fixture();a=self.sample(baseline='unrounded-movement');b=self.sample(50,baseline='unrounded-movement-8x')
         b['ResolutionCompletedFrames']=0
