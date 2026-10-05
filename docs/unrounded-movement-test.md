@@ -210,3 +210,40 @@ approach has value. Neither that combination nor a replacement renderer has
 been implemented by this evidence checkpoint. FFIV live testing remains pending.
 Raw capture, log, analyzer report and fractional-path breakdown are preserved
 locally in ignored `artifacts/ff6/unrounded-first/`.
+
+## First FFVI resolution-only comparison: 2026-10-04
+
+Capture `20261005-022244-917-c5b30d8f.json` contains 201 unrounded/stock-resolution
+samples and 308 unrounded/8x samples. The user reports no noticeable improvement.
+The log verifies two 8x activations with 713 and 390 completed field/compositor
+frames, three enlarged targets and 19 material bindings. Neither activation
+faulted: the first stopped manually and the second stopped on quit. Native
+movement rounding was also restored on quit. Timing/pacing corrections stayed off.
+
+All evaluated comparisons agree exactly: 509 camera, 509 map and 3,785 entity
+visual positions. The 8x portion contributes 308 camera, 308 map and 2,292 visual
+matches. Fractional player logical positions occur in 99 stock-resolution and
+146 8x observations. Every sampled follow target is the player; this run does
+not add moving-NPC or cinematic coverage. No audit samples were overwritten.
+
+The recorder sees up to 710 completed frames in an 8x sample. A stock-mode
+sample retains the preceding session's final 713 count before deferred cleanup;
+that is historical state, not evidence that stock mode renders at 8x. Counts
+reset on a new activation and must not be added across sampled rows. The two
+non-overlapping completed activation totals come from the log, not that maximum.
+
+This is execution evidence for the intended comparison and a negative reported
+visual result. It is not evidence that the patch failed to activate. Conversely,
+successful render callbacks and matching CPU positions do not establish that
+fractional motion survives the final compositor or that frames reach the display
+at even intervals. The audit samples at 20 Hz and does not capture final pixels
+or presentation timing. Mean observation cost was 0.114 ms, maximum 17.525 ms;
+the peak cannot be localized from aggregate timing.
+
+Pause further expansion of this branch. Before another visual correction, obtain
+evidence at the final pixel/compositor boundary and measure frame presentation.
+If comparing against the earlier successful three-part experiment, keep movement
+timing and pacing settings identical: those components were disabled here, so
+this result cannot attribute the earlier improvement to compensation alone.
+There is no new deployed runtime change in this evidence checkpoint. Captures,
+log and analyzer output remain local in `artifacts/ff6/unrounded-resolution-first/`.

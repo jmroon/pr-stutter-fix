@@ -16,6 +16,14 @@ observed standalone fix. A resolution-only combination would help assess whether
 the extra precision can be exposed without presentation reconstruction;
 see the experiment report for measured coverage and unresolved limits.
 
+The subsequent resolution-only comparison also produced no reported noticeable
+improvement, despite 1,103 completed 8x draws across two activations and exact
+sampled camera/map/visual agreement. Pause further implementation of this branch
+until final-pixel and presentation-cadence evidence identifies what remains.
+The earlier successful combined experiment included timing/pacing changes that
+were disabled in these comparisons; the results do not isolate compensation as
+the necessary difference. See the latest unrounded experiment report.
+
 Keep the existing implementation as an experimental checkpoint. Do not extend
 the player-equals-camera residual assumption or deploy another guard-only patch.
 The next implementation should calculate each supported entity's presentation
