@@ -16,9 +16,13 @@ internal static class Observer
     private static readonly AuditWindow Window = new(Stopwatch.Frequency);
     private static readonly CaptureWriter Writer = new(Path.Combine(Paths.BepInExRootPath, "diagnostics/PRStutter/presentation-audit"));
     private static RecentBuffer<object>? _rows;
+    private static RecentBuffer<object>? _lifecycle;
+    private static RuntimeReader? _stock;
+    private static long _nextLifecycle, _lifecycleTicks, _lifecycleMax;
+    private static int _lifecycleCount;
     private static long _started, _ticks, _maxTicks;
     private static int _samples, _cursor;
-    private static string _status = "Presentation audit OFF | Ctrl+F11: record 60s | F9 OFF; coordinated A/B supported";
+    private static string _status = "Presentation audit OFF | Ctrl+F11: record 60s | stock movement supported";
     private static PropertyInfo? _runtimeCurrent;
     private static PropertyInfo[]? _runtimeFlags;
     private static bool _runtimePresent;
@@ -34,6 +38,8 @@ internal static class Observer
         if (Window.Active) { Stop("manual"); return; }
         if (Writer.Busy) { _status = "Audit save in progress; wait before restarting"; return; }
         _rows = new RecentBuffer<object>(1200); _samples = _cursor = 0;
+        _lifecycle = new RecentBuffer<object>(240); _stock = null;
+        _nextLifecycle = _lifecycleTicks = _lifecycleMax = 0; _lifecycleCount = 0;
         _baseline = "waiting for field";
         _ticks = _maxTicks = 0; _started = Stopwatch.GetTimestamp();
         _runtimeCurrent = null; _runtimeFlags = null; _runtimePresent = false;
@@ -43,6 +49,7 @@ internal static class Observer
                 _unroundedPresent = true;
                 _unroundedState = assembly.GetType("PRStutter.UnroundedExperiment.ExperimentStatus")?.GetProperty("State", BindingFlags.Static | BindingFlags.Public);
                 var status = _unroundedState?.DeclaringType;
+                if (status?.GetProperty("Enabled", BindingFlags.Public | BindingFlags.Static) != null) _stock = new RuntimeReader(status);
                 _comparisonMode = status?.GetProperty("ComparisonMode", BindingFlags.Static | BindingFlags.Public);
                 _carriedTiles = status?.GetProperty("CarriedTiles", BindingFlags.Static | BindingFlags.Public);
                 _renderScale = status?.GetProperty("RequestedRenderScale", BindingFlags.Static | BindingFlags.Public);
@@ -63,6 +70,24 @@ internal static class Observer
             }
         }
         Window.Start(_started);
+    }
+    // Four Hz lifecycle coverage continues in menus/loading/battles where the
+    // field visual hook never executes. Work/storage exist only during capture.
+    public static void ObserveLifecycle()
+    {
+        if (!Window.Active) return;
+        long now = Stopwatch.GetTimestamp();
+        if (now < _nextLifecycle) return;
+        _nextLifecycle = now + Stopwatch.Frequency / 4;
+        try {
+            var state = _stock?.Read();
+            _lifecycle!.Add(now, new { Qpc = now, Frame = Time.frameCount, Runtime = state,
+                Status = state == null ? "stock-status-unavailable" : "observed" });
+            _lifecycleCount++;
+        } finally {
+            long cost = Stopwatch.GetTimestamp() - now;
+            _lifecycleTicks += cost; _lifecycleMax = Math.Max(_lifecycleMax, cost);
+        }
     }
     private static string Baseline()
     {
@@ -112,11 +137,13 @@ internal static class Observer
         var model = field.mapManager?.currentMapModel;
         var target = follow?.TargetEntity;
         var camera = follow?.camera;
-        string baseline = Baseline();
+        var runtime = _stock?.Read();
+        string condition = runtime?.Condition(field.Pointer.ToInt64(), model?.Pointer.ToInt64() ?? 0, field.currentAreaId, Time.frameCount) ?? "off";
+        string baseline = condition == "off" ? Baseline() : condition;
         _baseline = baseline;
-        string scope = baseline is "runtime-absent" or "corrections-disabled" or "unrounded-movement" or "unrounded-movement-8x" or "timing-pacing" or "timing-pacing-unrounded-stock" or "timing-pacing-unrounded-8x" ? "" : baseline;
+        string scope = baseline is "runtime-absent" or "corrections-disabled" or "unrounded-movement" or "unrounded-movement-8x" or "timing-pacing" or "timing-pacing-unrounded-stock" or "timing-pacing-unrounded-8x" or "stock-manual" or "stock-scripted" or "stock-precision-only" ? "" : baseline;
         if (follow == null || map == null || model == null || target == null || camera == null || field.player == null) {
-            _rows!.Add(qpc, new { Qpc = qpc, Frame = Time.frameCount, Area = field.currentAreaId, Baseline = baseline, Status = "missing-field-input" });
+            _rows!.Add(qpc, new { Qpc = qpc, Frame = Time.frameCount, Area = field.currentAreaId, Baseline = baseline, Runtime = runtime, Status = "missing-field-input" });
             _samples++; return;
         }
         var targetWorld = P(target.transform.position);
@@ -185,6 +212,7 @@ internal static class Observer
         }
         _rows!.Add(qpc, new {
             Qpc = qpc, Frame = Time.frameCount, Delta = Time.deltaTime, Controller = field.Pointer.ToInt64(),
+            MapModel = model.Pointer.ToInt64(), Runtime = runtime,
             CarriedTiles = _carriedTiles?.GetValue(null) as int? ?? 0,
             RequestedRenderScale = _renderScale?.GetValue(null) as int? ?? 1,
             ResolutionCompletedFrames = _resolutionFrames?.GetValue(null) as int? ?? 0,
@@ -210,15 +238,18 @@ internal static class Observer
         if (!Window.Active) return;
         Window.Stop();
         var rows = _rows!.Snapshot(0); long overwritten = _rows.Overwritten; _rows = null;
+        var lifecycle = _lifecycle!.Snapshot(0); long lifecycleOverwritten = _lifecycle.Overwritten; _lifecycle = null;
         Writer.TrySave(new {
-            SchemaVersion = 1, Kind = "presentation-adapter-audit", Game = Plugin.Game, Version = "0.1.4",
+            SchemaVersion = 1, Kind = "presentation-adapter-audit", Game = Plugin.Game, Version = "0.2.0",
             QpcFrequency = Stopwatch.Frequency, StartedQpc = _started, SavedQpc = Stopwatch.GetTimestamp(), Reason = reason,
             Phase = "FieldController.UpdateVisualInstancePosition.postfix", Samples = rows,
+            Lifecycle = lifecycle,
+            LifecycleOverhead = new { SampleCount = _lifecycleCount, TotalTicks = _lifecycleTicks, MaxTicks = _lifecycleMax, Overwritten = lifecycleOverwritten },
             Overhead = new { SampleCount = _samples, TotalTicks = _ticks, MaxTicks = _maxTicks, Overwritten = overwritten },
             Limitation = "20 Hz spatial evidence; not every frame, final rendering, shadow/material validation or display cadence. Matches do not establish correction safety. No timing or rendering correction is applied."
         });
         _status = $"Presentation audit stopped ({reason}); {_samples} samples | Ctrl+F11 record";
     }
-    public static void Fault(Exception e) { try { Stop("fault: " + e.GetType().Name + ": " + e.Message); } catch { Window.Stop(); _rows = null; } }
+    public static void Fault(Exception e) { try { Stop("fault: " + e.GetType().Name + ": " + e.Message); } catch { Window.Stop(); _rows = _lifecycle = null; } }
     public static void Wait() => Writer.Wait();
 }

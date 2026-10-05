@@ -24,6 +24,9 @@ foreach ($item in @(@('timing','Corrections'),@('playthrough','Debug'))) {
     $path=Join-Path $comparisonProfile.Directory "BepInEx/config/local.prstutter.$($item[0]).cfg"
     $outputs += @{Path=$path; Source=$null; Text=(Disable-IniKey $path $item[1])}
 }
+# The independent audit replaces the obsolete diagnostic bundle for this mode.
+# Preserve it in the same rollback manifest; never leave a dependency-error DLL.
+$outputs += @{Path=(Join-Path $plugins 'PRStutter.PlaythroughDiagnostics/PRStutter.PlaythroughDiagnostics.dll'); Remove=$true}
 $entries=@()
 foreach ($output in $outputs) {
     $previous=Test-Path -LiteralPath $output.Path
@@ -32,20 +35,22 @@ foreach ($output in $outputs) {
     $entries += [ordered]@{Path=$output.Path; Previous=$previous; Backup=$saved; PreviousHash=$(if($previous){(Get-FileHash -LiteralPath $saved).Hash}else{$null}); InstalledHash=$null}
 }
 $manifest=Join-Path $backup 'manifest.json'
-$record=[ordered]@{Game=$Game; Kind='coordinated-comparison'; GitCommit=(git -C $comparisonRoot rev-parse HEAD); Files=$entries; Complete=$false; RuntimeVerified=$false}
+$record=[ordered]@{Game=$Game; Kind='scene-aware-stock'; GitCommit=(git -C $comparisonRoot rev-parse HEAD); Files=$entries; Complete=$false; RuntimeVerified=$false}
 $record | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifest
 foreach ($output in $outputs) {
     if (Get-Process -Name $comparisonProfile.Process -ErrorAction SilentlyContinue) { throw "Game started; inspect incomplete install: $manifest" }
     $entry=$entries | Where-Object { $_.Path -eq $output.Path }
     if ((Test-Path -LiteralPath $output.Path) -ne $entry.Previous -or ($entry.Previous -and (Get-FileHash -LiteralPath $output.Path).Hash -ne $entry.PreviousHash)) { throw "File changed during build: $($output.Path)" }
     New-Item -ItemType Directory -Path (Split-Path $output.Path) -Force | Out-Null
-    if ($output.Source) { Copy-Item -LiteralPath $output.Source -Destination $output.Path -Force }
+    if ($output.Remove) { if ($entry.Previous) { Remove-Item -LiteralPath $output.Path } }
+    elseif ($output.Source) { Copy-Item -LiteralPath $output.Source -Destination $output.Path -Force }
     else { [IO.File]::WriteAllText($output.Path,$output.Text,[Text.UTF8Encoding]::new($false)) }
-    $entry.InstalledHash=(Get-FileHash -LiteralPath $output.Path).Hash
+    $entry.InstalledHash=if ($output.Remove) { 'ABSENT' } else { (Get-FileHash -LiteralPath $output.Path).Hash }
     $record | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifest
     if ($output.Source -and $entry.InstalledHash -ne (Get-FileHash -LiteralPath $output.Source).Hash) { throw 'Installed DLL hash mismatch.' }
-    if (!$output.Source -and [IO.File]::ReadAllText($output.Path) -ne $output.Text) { throw 'Installed configuration mismatch.' }
+    if ($output.Remove -and (Test-Path -LiteralPath $output.Path)) { throw 'Obsolete diagnostic DLL still present.' }
+    if (!$output.Remove -and !$output.Source -and [IO.File]::ReadAllText($output.Path) -ne $output.Text) { throw 'Installed configuration mismatch.' }
 }
 $record.Complete=$true
 $record | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifest
-Write-Host "$Game stock movement installed OFF. Smooth walking button/Shift+F11 toggles; Ctrl+F11 records. No 8x mode; control changes still stop this preview. Restore manifest: $manifest"
+Write-Host "$Game scene-aware stock movement installed OFF. Smooth movement button/Shift+F11 toggles; Ctrl+F11 records. Enabled intent survives supported context transitions; no 8x mode. Restore manifest: $manifest"

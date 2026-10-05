@@ -22,6 +22,10 @@ public static class ExperimentStatus
     public static string TimingStatus => RuntimeBridge.TimingStatus;
     public static string PacingStatus => RuntimeBridge.PacingStatus;
     public static int Generation => RuntimeBridge.Generation;
+    public static long ContextField => RuntimeBridge.ContextField;
+    public static long ContextMap => RuntimeBridge.ContextMap;
+    public static int ContextArea => RuntimeBridge.ContextArea;
+    public static int ContextFrame => RuntimeBridge.ContextFrame;
     public static int TimingSession => RuntimeBridge.TimingSession;
     public static string State => Experiment.State;
     public static string ComparisonMode => Experiment.ComparisonMode;

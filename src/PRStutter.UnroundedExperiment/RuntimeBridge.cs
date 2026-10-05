@@ -18,6 +18,10 @@ internal static class RuntimeBridge
     public static string TimingStatus => _type == null ? "off" : (string)Property("TimingStatus").GetValue(null)!;
     public static string PacingStatus => _type == null ? "off" : (string)Property("PacingStatus").GetValue(null)!;
     public static int Generation => _type == null ? 0 : (int)Property("Generation").GetValue(null)!;
+    public static long ContextField => _type == null ? 0 : (long)Property("ContextField").GetValue(null)!;
+    public static long ContextMap => _type == null ? 0 : (long)Property("ContextMap").GetValue(null)!;
+    public static int ContextArea => _type == null ? -1 : (int)Property("ContextArea").GetValue(null)!;
+    public static int ContextFrame => _type == null ? -10 : (int)Property("ContextFrame").GetValue(null)!;
     public static int TimingSession => _type == null ? 0 : (int)Property("TimingSession").GetValue(null)!;
     public static void Refresh() => _type?.GetMethod("Refresh")!.Invoke(null, null);
     public static void Suspend(string reason) { if (_type != null) Invoke("Suspend", reason); }

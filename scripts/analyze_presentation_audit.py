@@ -5,6 +5,30 @@ import json
 import math
 from pathlib import Path
 
+STOCK_MODES = ('stock-manual', 'stock-scripted', 'stock-precision-only')
+
+
+def stock_condition(sample):
+    """Do not accept a stock label without actual, fresh component evidence."""
+    mode = sample['Baseline']
+    if mode not in STOCK_MODES:
+        return mode
+    r = sample.get('Runtime') or {}
+    expected = {'stock-manual': (True, True), 'stock-scripted': (False, True),
+                'stock-precision-only': (False, False)}[mode]
+    if (r.get('Enabled') is not True or r.get('PrecisionActive') is not True
+            or r.get('Faulted') is not False or r.get('ComparisonMode') != mode
+            or tuple(r.get(k) for k in ('TimingActive', 'PacingActive')) != expected):
+        return 'stock-invalid'
+    if (not r.get('ContextField') or not r.get('ContextMap')
+            or r['ContextField'] != sample.get('Controller')
+            or r['ContextMap'] != sample.get('MapModel')
+            or r.get('ContextArea') != sample.get('Area')
+            or not isinstance(r.get('ContextFrame'), int)
+            or not 0 <= sample['Frame'] - r['ContextFrame'] <= 1):
+        return 'stock-context-mismatch'
+    return mode
+
 
 def summarize(data):
     if (data.get('Kind') != 'presentation-adapter-audit' or data.get('SchemaVersion') != 1
@@ -21,10 +45,24 @@ def summarize(data):
     experiment_samples = 0
     by_condition = defaultdict(lambda: {k: Counter() for k in checks})
     fractional = defaultdict(Counter)
-    comparable = ('runtime-absent', 'corrections-disabled', 'unrounded-movement', 'unrounded-movement-8x', 'timing-pacing', 'timing-pacing-unrounded-stock', 'timing-pacing-unrounded-8x')
+    comparable = ('runtime-absent', 'corrections-disabled', 'unrounded-movement', 'unrounded-movement-8x', 'timing-pacing', 'timing-pacing-unrounded-stock', 'timing-pacing-unrounded-8x') + STOCK_MODES
     resolution_frames = {}
     carried_deltas = Counter()
     previous_carry = None
+    contexts, lifecycle_states = Counter(), Counter()
+    transitions = []
+    previous_lifecycle = None
+    for row in data.get('Lifecycle', []):
+        r = row.get('Runtime') or {}
+        context = r.get('ContextKind', 'unknown')
+        state = (context, r.get('Generation'), r.get('Enabled'), r.get('PrecisionActive'),
+                 r.get('TimingActive'), r.get('PacingActive'), r.get('Faulted'),
+                 r.get('TimingStatus'), r.get('PacingStatus'))
+        lifecycle_states[r.get('ComparisonMode', 'unknown')] += 1
+        contexts[context] += 1
+        if state != previous_lifecycle:
+            transitions.append(dict(qpc=row['Qpc'], frame=row['Frame'], runtime=r))
+        previous_lifecycle = state
 
     def check(kind, value, sample, entity=None):
         status = value.get('Status', 'missing-check')
@@ -55,7 +93,8 @@ def summarize(data):
     def finite_xy(point):
         return all(isinstance(v, (int, float)) and math.isfinite(v) for v in xy(point))
 
-    for s in data['Samples']:
+    for original in data['Samples']:
+        s = dict(original, Baseline=stock_condition(original))
         rows[s['Status']] += 1
         baselines[s['Baseline']] += 1
         if s['Status'] != 'sample':
@@ -65,13 +104,16 @@ def summarize(data):
             continue
         clean = s['Baseline'] in comparable
         clean_samples += s['Baseline'] in ('runtime-absent', 'corrections-disabled')
-        experiment_samples += s['Baseline'] in ('unrounded-movement', 'unrounded-movement-8x', 'timing-pacing', 'timing-pacing-unrounded-stock', 'timing-pacing-unrounded-8x')
+        experiment_samples += clean and s['Baseline'] not in ('runtime-absent', 'corrections-disabled')
+        runtime = s.get('Runtime') or {}
+        session = (runtime.get('Generation'), runtime.get('TimingSession'), runtime.get('ContextIdentity'))
         carried = s.get('CarriedTiles')
         if isinstance(carried, int) and carried >= 0:
             if (previous_carry and previous_carry[0] == s['Baseline'] and carried >= previous_carry[1]
+                    and previous_carry[3] == session
                     and 0 < s['Qpc'] - previous_carry[2] <= data['QpcFrequency'] / 5):
                 carried_deltas[s['Baseline']] += carried - previous_carry[1]
-            previous_carry = (s['Baseline'], carried, s['Qpc']) if clean else None
+            previous_carry = (s['Baseline'], carried, s['Qpc'], session) if clean else None
         else:
             previous_carry = None
         frames = s.get('ResolutionCompletedFrames')
@@ -85,7 +127,7 @@ def summarize(data):
                 target_roles[entity['Role']] += 1
             if clean and finite_xy(entity['LogicalWorld']) and any(abs(v-round(v)) > .002 for v in xy(entity['LogicalWorld'])):
                 fractional[s['Baseline']][entity['Role']] += 1
-        identity = (s['Controller'], s['Area'], s['TargetId'], s['CameraId'], s['View'], s['Baseline'])
+        identity = (s['Controller'], s['Area'], s['TargetId'], s['CameraId'], s['View'], s['Baseline'], session)
         if not finite_xy(s['TargetWorld']) or not finite_xy(s['CameraWorld']):
             previous = None
             previous_entities.clear()
@@ -123,7 +165,14 @@ def summarize(data):
     failed = sum(c['mismatch'] + c['invalid-check'] + c['nonfinite'] for c in checks.values())
     overhead = data.get('Overhead', {})
     count = overhead.get('SampleCount', 0)
+    lifecycle_cost = data.get('LifecycleOverhead', {})
+    lifecycle_count = lifecycle_cost.get('SampleCount', 0)
     return dict(game=data['Game'], reason=data['Reason'], phase=data['Phase'], samples=dict(rows),
+                lifecycle_context_samples=dict(contexts), lifecycle_mode_samples=dict(lifecycle_states),
+                lifecycle_transitions=transitions,
+                lifecycle_mean_ms=lifecycle_cost.get('TotalTicks', 0)*1000/data['QpcFrequency']/lifecycle_count if lifecycle_count else None,
+                lifecycle_max_ms=lifecycle_cost.get('MaxTicks', 0)*1000/data['QpcFrequency'],
+                lifecycle_overwritten=lifecycle_cost.get('Overwritten', 0),
                 timing_carried_tiles_observed=dict(carried_deltas),
                 clean_samples=clean_samples, experiment_samples=experiment_samples, baselines=dict(baselines),
                 outcome='disagreements-found' if failed else 'observed-checks-match' if compared else 'no-clean-comparisons',
@@ -136,7 +185,7 @@ def summarize(data):
                 observed_patterns=dict(patterns), examples=examples,
                 observer_mean_ms=overhead.get('TotalTicks', 0)*1000/data['QpcFrequency']/count if count else None,
                 observer_max_ms=overhead.get('MaxTicks', 0)*1000/data['QpcFrequency'],
-                limitations='Sampled XY mapping agreement only; unrounded and coordinated A/B modes are experiments, not an unmodified baseline. The 8x label describes requested resolution; require completed render frames as execution evidence. Fractional observations do not establish gameplay safety. Unobserved roles/modes are untested; excluded checks are not matches. Camera-step patterns do not identify their cause. Carry deltas count observed corrections within each continuous condition, excluding switches and gaps. No final-pixel, shadow/material or display-jitter proof.')
+                limitations='Sampled XY mapping agreement only; stock/unrounded modes are experiments, not an unmodified baseline. Lifecycle is sampled at 4 Hz and can miss short transitions; its counts are coverage, not exact durations or spatial passes. The 8x label describes requested resolution; require completed render frames as execution evidence. Fractional observations do not establish gameplay safety. Unobserved roles/modes are untested; excluded checks are not matches. Camera-step patterns do not identify their cause. Carry deltas exclude mode/session/generation switches and gaps. No final-pixel, shadow/material or display-jitter proof.')
 
 
 if __name__ == '__main__':

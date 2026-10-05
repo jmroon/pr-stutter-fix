@@ -8,6 +8,53 @@ spec.loader.exec_module(audit)
 
 
 class AuditAnalysisTests(unittest.TestCase):
+    def stock_sample(self, qpc=0, mode='stock-manual'):
+        s = self.sample(qpc, baseline=mode)
+        s['MapModel'] = 10
+        s['Runtime'] = dict(Enabled=True, PrecisionActive=True, TimingActive=mode=='stock-manual',
+                            PacingActive=mode!='stock-precision-only', Faulted=False,
+                            ComparisonMode=mode, ContextField=1, ContextMap=10, ContextArea=39,
+                            ContextFrame=qpc, Generation=1, TimingSession=1, ContextIdentity='field-1')
+        return s
+
+    def test_scripted_capture_requires_actual_flags_and_current_field(self):
+        d = self.fixture()
+        good = self.stock_sample(mode='stock-scripted')
+        bad = self.stock_sample(50)
+        bad['Runtime']['PacingActive'] = False
+        stale = self.stock_sample(100)
+        stale['Runtime']['ContextMap'] = 99
+        d['Samples'] = [good, bad, stale]
+        r = audit.summarize(d)
+        self.assertEqual(r['experiment_samples'], 1)
+        self.assertEqual(r['baselines'], {'stock-scripted':1, 'stock-invalid':1, 'stock-context-mismatch':1})
+        self.assertEqual(r['checks']['camera'], {'match':1, 'baseline-excluded':2})
+
+    def test_stock_label_alone_is_not_evidence(self):
+        d = self.fixture(); d['Samples'] = [self.sample(baseline='stock-manual')]
+        self.assertEqual(audit.summarize(d)['outcome'], 'no-clean-comparisons')
+
+    def test_lifecycle_without_field_rows_is_coverage_not_a_spatial_pass(self):
+        d = self.fixture()
+        d['Lifecycle'] = [dict(Qpc=i*250, Frame=i, Runtime=dict(ContextKind=k, ComparisonMode='stock-suspended', Enabled=True))
+                          for i,k in enumerate(['Battle','Battle','Menu'])]
+        r = audit.summarize(d)
+        self.assertEqual(r['outcome'], 'no-clean-comparisons')
+        self.assertEqual(r['lifecycle_context_samples'], {'Battle':2,'Menu':1})
+        self.assertEqual(len(r['lifecycle_transitions']), 2)
+
+    def test_carry_and_motion_do_not_bridge_reacquired_session(self):
+        d = self.fixture()
+        d['Samples'] = [self.stock_sample(i*50) for i in range(4)]
+        for i,s in enumerate(d['Samples']):
+            s['CarriedTiles'] = i*2
+            s['Runtime']['TimingSession'] = 1 if i < 2 else 2
+        d['Samples'][2]['TargetWorld'] = dict(X=10,Y=0)
+        d['Samples'][3]['TargetWorld'] = dict(X=10,Y=0)
+        r = audit.summarize(d)
+        self.assertEqual(r['timing_carried_tiles_observed'], {'stock-manual':4})
+        self.assertEqual(r['observed_patterns'], {})
+
     def test_comparison_counts_carries_without_crossing_switches_or_gaps(self):
         d = self.fixture()
         rows = []

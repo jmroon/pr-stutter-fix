@@ -87,6 +87,7 @@ internal static class FieldContext
         string kind = manual ? "field-manual" : state == "Player" ? "field-scripted-control" : "field-" + state.ToLowerInvariant();
         if (manual) _manualController = controller;
         return new(identity, timingIdentity, kind, true, pacing, manual,
-            manual ? "manual field control" : "scripted field control; manual timing suspended");
+            manual ? "manual field control" : "scripted field control; manual timing suspended",
+            field.Pointer.ToInt64(), model.Pointer.ToInt64(), field.currentAreaId);
     }
 }

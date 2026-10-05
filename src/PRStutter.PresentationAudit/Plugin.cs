@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace PRStutter.PresentationAudit;
 
-[BepInPlugin("local.prstutter.presentationaudit", "PR Stutter Presentation Audit", "0.1.4")]
+[BepInPlugin("local.prstutter.presentationaudit", "PR Stutter Presentation Audit", "0.2.0")]
 public sealed class Plugin : BasePlugin
 {
     private Harmony? _harmony;
@@ -25,7 +25,7 @@ public sealed class Plugin : BasePlugin
                 ?? throw new MissingMethodException("Field visual boundary not found");
             _harmony.Patch(original, postfix: new HarmonyMethod(typeof(Observer).GetMethod(nameof(Observer.AfterVisuals), BindingFlags.Public | BindingFlags.Static)!));
             _driver = AddComponent<Driver>();
-            Log.LogInfo("Read-only presentation audit ready. Ctrl+F11 starts/stops a 60-second capture. Turn corrections OFF with F9 and normal diagnostics OFF with F10. One observational postfix; no native return/argument changes or render/gameplay setters.");
+            Log.LogInfo("Read-only presentation audit ready. Ctrl+F11 starts/stops a 60-second capture; stock movement can stay enabled. 20 Hz spatial + 4 Hz lifecycle evidence; no correction dependency or game setters.");
         } catch { _harmony?.UnpatchSelf(); throw; }
     }
     public override bool Unload()
@@ -61,6 +61,7 @@ public sealed class Driver : MonoBehaviour
         try {
             if (Input.GetKeyDown(KeyCode.F11) && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))) Observer.Toggle();
             if (Observer.Expired) Observer.Stop("duration");
+            Observer.ObserveLifecycle();
         } catch (Exception e) { Observer.Fault(e); }
     }
     public void OnGUI() { try { GUI.Label(new Rect(12, Screen.height - 90, Math.Max(200, Screen.width - 24), 50), Observer.Status); } catch { } }

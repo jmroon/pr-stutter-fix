@@ -38,6 +38,10 @@ public static class ComparisonControl
     public static int Generation { get; private set; }
     public static string ContextKind => _context.Kind;
     public static string ContextIdentity => _context.Identity;
+    public static long ContextField => _context.Field;
+    public static long ContextMap => _context.Map;
+    public static int ContextArea => _context.Area;
+    public static int ContextFrame { get; private set; } = -10;
     public static string TimingStatus => _timing?.Status ?? "off";
     public static string PacingStatus => _pacing?.Status ?? "off";
     public static bool Faulted => _fault || _timing?.Faulted == true || _pacing?.Faulted == true;
@@ -73,6 +77,7 @@ public static class ComparisonControl
             var context = FieldContext.Read();
             if (context.Identity != _context.Identity || context.TimingIdentity != _context.TimingIdentity) Generation++;
             _context = context;
+            ContextFrame = FieldContext.Frame;
             Readiness.Observe(context.Identity, FieldContext.Frame, context.Precision);
             bool ready = Readiness.Ready;
             _pacingIdentity = context.Identity;

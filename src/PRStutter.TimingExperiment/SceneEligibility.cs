@@ -1,7 +1,7 @@
 namespace PRStutter.TimingExperiment;
 
 internal readonly record struct FieldContextSnapshot(string Identity, string TimingIdentity, string Kind,
-    bool Precision, bool Pacing, bool Manual, string Reason);
+    bool Precision, bool Pacing, bool Manual, string Reason, long Field = 0, long Map = 0, int Area = -1);
 
 internal static class SceneEligibility
 {

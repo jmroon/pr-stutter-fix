@@ -1,11 +1,14 @@
 # Pixel Remaster stutter investigation
 
-**Current build:** [stock-resolution smooth walking](docs/stock-movement-mode.md).
-Use the **Enable smooth walking (stock resolution)** button or **Shift+F11**.
-Timing, display pacing and unrounded movement run together, with no timeout.
+**Current build:** [stock-resolution smooth movement](docs/stock-movement-mode.md).
+Use the **Enable smooth movement (stock resolution)** button or **Shift+F11**.
+Timing, display pacing and unrounded movement have independent scene lifetimes.
 **Ctrl+F11** records the independent audit. The 8x renderer is absent from this
-build; Alt+F11 no longer switches resolutions. The mode starts OFF and still
-stops on control/scene changes; automatic resumption is the next checkpoint.
+build; Alt+F11 no longer switches resolutions. The mode starts OFF; once enabled,
+it suspends in unsupported contexts and resumes in eligible fields. Field scripts
+can retain precision/pacing while manual timing suspends. Live transition and
+cinematic testing remains outstanding. Grid 0.10.0 / Timing 0.7.0 / Stock Movement
+0.5.0 / Audit 0.2.0 are the current bundle.
 Install both supported profiles with `scripts/Deploy-ComparisonExperiment.ps1`.
 [Rollback checkpoints and retained findings](docs/offshoot-checkpoint.md).
 The older automatic runtime described below remains experimental.
@@ -20,7 +23,7 @@ have targeted live evidence. The new automatic lifecycle and playthrough debug
 mode pass offline checks but still require in-game transition and overhead checks.
 Unknown cinematic/battle/camera layouts suspend unsupported corrections.
 
-Current components: **Timing 0.6.3**, **Grid 0.9.2**, optional **Playthrough
+Historical automatic-runtime components: **Timing 0.6.3**, **Grid 0.9.2**, optional **Playthrough
 Diagnostics 0.2.2**. F9 enables/disables automatic corrections; F10 toggles debug
 recording; F11 marks an incident. Smoothing requires CRT off. Debug recording is
 optional and cannot gate correction behavior.

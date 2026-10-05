@@ -31,6 +31,17 @@ Check(!window.Take(60000)&&window.Expired(60000),"Duration bound");
 window.Stop();Check(!window.Take(70000)&&!window.Expired(70000),"Stopped observer active");
 window.Start(70000);Check(window.Take(70000),"Restart failed");
 Console.WriteLine("PASS: native clamp/offset ordering, small and looping maps, independent actor projection, layer scale, nonfinite/contamination refusal and bounded sampling.");
+var runtime = new RuntimeState(true,true,true,true,false,"field-manual","identity","active","active",1,1,100,200,9,10,"stock-manual");
+Check(runtime.Condition(100,200,9,11)=="stock-manual","Eligible manual capture excluded");
+Check((runtime with { TimingActive=false, ComparisonMode="stock-scripted" }).Condition(100,200,9,11)=="stock-scripted","Script capture requires manual timing");
+Check((runtime with { TimingActive=false }).Condition(100,200,9,11)=="stock-invalid","Incorrect mode admitted");
+Check(runtime.Condition(101,200,9,11)=="stock-context-mismatch","Other field admitted");
+Check(runtime.Condition(100,201,9,11)=="stock-context-mismatch","Other map admitted");
+Check(runtime.Condition(100,200,10,11)=="stock-context-mismatch","Other area admitted");
+Check(runtime.Condition(100,200,9,12)=="stock-context-mismatch","Stale state admitted");
+Check((runtime with { Faulted=true }).Condition(100,200,9,11)=="stock-invalid","Fault admitted");
+Check((runtime with { PrecisionActive=false, ComparisonMode="stock-suspended" }).Condition(0,0,0,20)=="stock-suspended","Unsupported lifecycle missing");
+Console.WriteLine("PASS: actual component flags and fresh field/map/area required for stock spatial evidence; script and suspended lifecycle states remain distinct.");
 
 using var stream=File.OpenRead(args[0]);using var pe=new PEReader(stream);var reader=pe.GetMetadataReader();
 foreach(var h in reader.AssemblyReferences) {
