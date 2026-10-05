@@ -8,6 +8,14 @@ below remains a fallback under investigation. Logical-position rounding has not
 been proven necessary for gameplay; changing it before native collider updates
 is materially different from replacing positions afterward.
 
+First live result: the FFVI bypass does produce fractional player, NPC and
+scripted-camera movement, with fractions retained by the camera and map root.
+The user reports no noticeable visual improvement at the unchanged rendering
+resolution and pacing. Removing source rounding alone is therefore not an
+observed standalone fix. A resolution-only combination would help assess whether
+the extra precision can be exposed without presentation reconstruction;
+see the experiment report for measured coverage and unresolved limits.
+
 Keep the existing implementation as an experimental checkpoint. Do not extend
 the player-equals-camera residual assumption or deploy another guard-only patch.
 The next implementation should calculate each supported entity's presentation

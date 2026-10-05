@@ -112,5 +112,56 @@ and after bypass, checking fractional argument preservation and real executable
 memory protection/cache operations. It never loads or patches the game.
 
 Both builds and the updated read-only audit pass offline checks. Live shared-path
-coverage, collider/event behavior, cinematic behavior and visual benefit remain
-unverified until the new experiment is run.
+coverage was initially unverified. The first FFVI result below establishes sampled
+fractional movement coverage, but not broad collider/event safety or visual benefit.
+
+## First FFVI live result: 2026-10-04
+
+Capture `20261005-020941-678-183ff751.json` lasts 37.485 seconds and contains
+20 OFF and 634 ON field samples. The user could not see a difference with the
+experiment enabled. The log confirms activation of all four reviewed calls and
+restoration on quit, with the old timing/pacing/smoothing corrections disabled.
+No experiment or observer fault is recorded.
+
+The intervention demonstrably reached shared movement, not just the player:
+
+| Role | Fractional logical-position observations while ON |
+| --- | ---: |
+| Player | 91 |
+| Scripted camera target (scroll dummy) | 73 |
+| NPC | 31 |
+
+The OFF samples have no fractional logical observations. Camera position, cached
+map scroll and the actual map root each retain fractions in 164 ON samples.
+Of the 31 fractional NPC logical observations, 29 also have fractional visual
+positions; camera-relative subtraction can legitimately yield an integer for
+the remainder or for a player centered by the camera.
+
+All 4,267 evaluated ON entity visual positions match the mapping exactly.
+Another 496 visual checks concern the non-drawable scroll dummy and are excluded.
+Camera and map checks each match 633 ON samples and disagree once. That sample
+repeats the earlier baseline's numerical transition pattern: expected (-48,328),
+observed (-32,344), maximum XY disagreement 16 units. Its recurrence is not proof
+of cause or final visibility; it remains a mismatch. The 20 OFF samples have
+20 camera, 20 map and 151 visual matches.
+
+Example: the player reaches Y=-6.661872, the camera/cache reach Y=9.338128,
+and the map root reaches Y=-1.3381281. Thus it would be incorrect to explain
+this result as failure to patch movement or as all fractions being erased before
+the observed visual boundary. Equally, spatial agreement does not show smooth
+delivered pixels or validate every gameplay consumer.
+
+This experiment did not deliver a noticeable standalone improvement in the
+tested setup. It is consistent with coarse raster sampling masking the extra
+precision, while unchanged timing/pacing can also remain limiting. The short OFF
+interval and 20 Hz spatial recorder do not quantify a visual A/B difference.
+Mean sampled observer cost is 0.098 ms; maximum 17.350 ms, with no per-sample cost
+trace to locate that peak.
+
+The next discriminating comparison would hold pacing fixed and combine this
+source change with a resolution-only rendering increase, without the old player
+or camera compensation. That would test whether a simpler source-plus-raster
+approach has value. Neither that combination nor a replacement renderer has
+been implemented by this evidence checkpoint. FFIV live testing remains pending.
+Raw capture, log, analyzer report and fractional-path breakdown are preserved
+locally in ignored `artifacts/ff6/unrounded-first/`.
