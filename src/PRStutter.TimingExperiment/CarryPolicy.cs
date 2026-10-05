@@ -12,7 +12,8 @@ public static class CarryPolicy
         completionFrame == currentFrame && cameraFrame != currentFrame &&
         footFinishedFrame == currentFrame && footAllowsNext && operationAllowed;
 
-    public static bool Ordinary(Walk s)
+    public static bool Ordinary(Walk s) => Ordinary(s, false);
+    public static bool Ordinary(Walk s, bool unrounded)
     {
         if (!float.IsFinite(s.Sx) || !float.IsFinite(s.Sy) || !float.IsFinite(s.Dx) || !float.IsFinite(s.Dy) ||
             !float.IsFinite(s.Timer) || !float.IsFinite(s.Duration) || !float.IsFinite(s.X) || !float.IsFinite(s.Y)) return false;
@@ -24,16 +25,22 @@ public static class CarryPolicy
         // when both displacement axes are nonzero. Never write the duration.
         float expectedDuration = diagonal ? .2f * MathF.Sqrt(2) : .2f;
         if (Math.Abs(s.Duration - expectedDuration) > .000001f || s.Timer < 0 || s.Timer >= s.Duration) return false;
+        if (unrounded) return Math.Abs(s.X - Position(s.Sx, s.Dx, s.Timer, s.Duration, true)) <= .002f &&
+            Math.Abs(s.Y - Position(s.Sy, s.Dy, s.Timer, s.Duration, true)) <= .002f;
         return s.X == Rounded(s.Sx, s.Dx, s.Timer, s.Duration) && s.Y == Rounded(s.Sy, s.Dy, s.Timer, s.Duration);
     }
+
+    public static float Position(float start, float dest, float timer, float duration, bool unrounded) =>
+        unrounded ? start + (dest - start) * (timer / duration) : Rounded(start, dest, timer, duration);
 
     public static float Rounded(float start, float dest, float timer, float duration) =>
         (float)Math.Round(start + (dest - start) * (timer / duration));
 
-    public static bool TryRemainder(Walk before, float dt, out float remainder)
+    public static bool TryRemainder(Walk before, float dt, out float remainder) => TryRemainder(before, dt, out remainder, false);
+    public static bool TryRemainder(Walk before, float dt, out float remainder, bool unrounded)
     {
         remainder = 0;
-        if (!Ordinary(before) || !float.IsFinite(dt) || dt <= 0 || dt > .05f) return false;
+        if (!Ordinary(before, unrounded) || !float.IsFinite(dt) || dt <= 0 || dt > .05f) return false;
         float elapsed = before.Timer + dt; // Match the native float addition/comparison.
         if (elapsed < before.Duration) return false;
         remainder = elapsed - before.Duration;

@@ -12,9 +12,11 @@ static Walk Moving(float start, float timer, int sign = 1, bool vertical = false
     float pos = CarryPolicy.Rounded(start, dest, timer, .2f);
     return vertical ? new Walk(0,start,0,dest,timer,.2f,0,pos) : new Walk(start,0,dest,0,timer,.2f,pos,0);
 }
+ComparisonChecks.Run();
 int simulated = 0;
 // Compare integrated continuous distance with elapsed time, including jitter and many
 // boundaries. The native simulation still invokes completion once per completed tile.
+foreach (bool unrounded in new[] { false, true })
 foreach (int fps in new[] { 30, 60, 120, 144, 165, 240, 360 })
 foreach (int sign in new[] { -1, 1 })
 foreach (bool vertical in new[] { false, true })
@@ -26,7 +28,10 @@ foreach (bool jitter in new[] { false, true })
     for (int frame = 0; frame < fps * 10; frame++) {
         float dt = (1f / fps) * (jitter ? new[] { .72f, 1.28f, .96f, 1.04f }[frame % 4] : 1);
         var before = Moving(start, timer, sign, vertical);
-        bool carry = CarryPolicy.TryRemainder(before, dt, out float remainder);
+        if (unrounded) before = before with {
+            X = CarryPolicy.Position(before.Sx, before.Dx, timer, .2f, true),
+            Y = CarryPolicy.Position(before.Sy, before.Dy, timer, .2f, true) };
+        bool carry = CarryPolicy.TryRemainder(before, dt, out float remainder, unrounded);
         timer += dt; elapsed += dt;
         if (timer >= .2f) {
             callbacks++;
@@ -45,6 +50,11 @@ foreach (bool jitter in new[] { false, true })
 }
 Console.WriteLine($"PASS: {simulated} simulated frames, both axes/directions, steady/jittered 30-360 FPS; cumulative motion conserved within .001 game units, completion counts preserved.");
 
+var fractional = Moving(64, .199f) with { X = CarryPolicy.Position(64,80,.199f,.2f,true) };
+Check(CarryPolicy.TryRemainder(fractional,.008f,out _,true), "Fractional timing bypassed");
+Check(!CarryPolicy.TryRemainder(fractional,.008f,out _), "Normal timing accepted fractional mode");
+Check(!CarryPolicy.TryRemainder(fractional with { X = fractional.X + .01f },.008f,out _,true), "Fractional pose disagreement accepted");
+Check(CarryPolicy.Position(0,16,.007f,.2f,true) != CarryPolicy.Rounded(0,16,.007f,.2f), "B carry still rounded");
 var sample = Moving(64, .199f);
 Check(CarryPolicy.TryRemainder(sample,.008f,out float leftover) && Math.Abs(leftover-.007f)<.000001, "Measured shortfall not recovered");
 Check(!CarryPolicy.TryRemainder(sample,.1f,out _), "Long stall accepted");

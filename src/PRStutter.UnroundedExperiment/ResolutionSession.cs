@@ -215,7 +215,7 @@ internal static class Resolution
     public static int RequestedScale => _active ? 8 : 1;
     public static int CompletedFrames => _session?.Frames ?? 0;
     public static string Note { get; private set; } = "stock 320x180";
-    public static string Label => $"FIELD RESOLUTION {(_active ? "8x 2560x1440" : "STOCK")} | Alt+F11 toggle | {(_active ? $"drawn frames {CompletedFrames}" : Note)}";
+    public static string Label => $"FIELD RESOLUTION {(_active ? "8x 2560x1440" : "STOCK")} | Alt+F11 switches A/B | {(_active ? $"drawn frames {CompletedFrames}" : Note)}";
     public static void Toggle()
     {
         if (_active) { Stop("manual"); return; }

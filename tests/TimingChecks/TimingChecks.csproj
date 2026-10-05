@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable><TreatWarningsAsErrors>true</TreatWarningsAsErrors></PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/PRStutter.TimingExperiment/ComparisonControl.cs" Link="ComparisonControl.cs" />
     <Compile Include="../../src/PRStutter.TimingExperiment/CorrectionEvents.cs" Link="CorrectionEvents.cs" />
     <Compile Include="../../src/PRStutter.TimingExperiment/AutomaticFeature.cs" Link="AutomaticFeature.cs" />
     <Compile Include="../../src/PRStutter.TimingExperiment/CarryPolicy.cs" Link="CarryPolicy.cs" />

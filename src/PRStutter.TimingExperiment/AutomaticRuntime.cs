@@ -48,12 +48,14 @@ internal static class AutomaticRuntime
     }
     public static void Toggle()
     {
+        if (ComparisonControl.Active) { Timing.Note("F9 ignored while A/B comparison owns timing/pacing; Shift+F11 stops it."); return; }
         _enabled.Value = !Enabled; _generation++; _nextProbe = 0;
         if (!Enabled) Suspend("disabled by F9");
     }
     public static void Tick()
     {
         if (_shutdown) return;
+        if (ComparisonControl.Active) { Publish(Stopwatch.GetTimestamp(), "coordinated-comparison"); return; }
         long now = Stopwatch.GetTimestamp();
         if (now < _nextProbe) { Publish(now); return; }
         _nextProbe = now + Stopwatch.Frequency / 2;
@@ -111,6 +113,7 @@ internal static class AutomaticRuntime
     }
     public static void Suspend(string reason)
     {
+        ComparisonControl.Stop(reason);
         TimingFeature.Suspend(reason); PacingFeature.Suspend(reason); SmoothingFeature.Suspend(reason);
         Follow.Reset(); _identity = ""; _generation++; _nextProbe = 0;
         Publish(Stopwatch.GetTimestamp());

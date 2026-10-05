@@ -13,6 +13,7 @@ internal static class DiagonalChecks
     public static void Run()
     {
         int simulated = 0;
+        foreach (bool unrounded in new[] { false, true })
         foreach (int fps in new[] { 30, 60, 120, 144, 165, 240, 360 })
         foreach (int x in new[] { -1, 1 })
         foreach (int y in new[] { -1, 1 })
@@ -23,9 +24,12 @@ internal static class DiagonalChecks
             for (int frame = 0; frame < fps * 10; frame++) {
                 float dt = (1f / fps) * (jitter ? new[] { .72f, 1.28f, .96f, 1.04f }[frame % 4] : 1);
                 var before = Moving(sx, sy, timer, x, y);
-                Check(CarryPolicy.Ordinary(before), "Native diagonal walk rejected");
+                if (unrounded) before = before with {
+                    X = CarryPolicy.Position(before.Sx, before.Dx, timer, Duration, true),
+                    Y = CarryPolicy.Position(before.Sy, before.Dy, timer, Duration, true) };
+                Check(CarryPolicy.Ordinary(before, unrounded), "Native diagonal walk rejected");
                 Check(CarryPolicy.SameInput(before, x, y, frame, frame), "Fresh diagonal input rejected");
-                bool carry = CarryPolicy.TryRemainder(before, dt, out float remainder);
+                bool carry = CarryPolicy.TryRemainder(before, dt, out float remainder, unrounded);
                 timer += dt; elapsed += dt;
                 if (timer >= Duration) {
                     callbacks++;

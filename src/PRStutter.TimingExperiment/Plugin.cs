@@ -19,7 +19,7 @@ using ArrivalIterator = Last.Map.FootMonitoring._UpdateMonitor_d__41;
 
 namespace PRStutter.TimingExperiment;
 
-[BepInPlugin("local.prstutter.timing", "PR Stutter Tile Timing Test", "0.6.2")]
+[BepInPlugin("local.prstutter.timing", "PR Stutter Tile Timing Test", "0.6.3")]
 [BepInDependency("local.prstutter.grid", "0.9.2")]
 public sealed class Plugin : BasePlugin
 {
@@ -37,7 +37,7 @@ public sealed class Plugin : BasePlugin
         Timing.Log = Log;
         AutomaticRuntime.Initialize(Config);
         _driver = AddComponent<Driver>();
-        Timing.Note("0.6.2 automatic field corrections ready. F9 enables/disables; timing, pacing and smoothing suspend independently. No duration limit. CRT OFF for smoothing. Diagnostics optional.");
+        Timing.Note("0.6.3 automatic field corrections ready. F9 enables/disables; timing, pacing and smoothing suspend independently. No duration limit. CRT OFF for smoothing. Diagnostics optional.");
     }
     public override bool Unload()
     {
@@ -181,7 +181,7 @@ internal static class Timing
             _lastUpdate = frame;
             __state = new Sample(true, frame, Stopwatch.GetTimestamp(), Time.deltaTime, Read(__instance), _axis.x, _axis.y, _inputFrame);
             _arrival = null; _arrivalCount = 0; _arrivalFrame = -1;
-            _captureFrame = CarryPolicy.TryRemainder(__state.Before, __state.Delta, out _) &&
+            _captureFrame = CarryPolicy.TryRemainder(__state.Before, __state.Delta, out _, ComparisonControl.Active && ComparisonControl.UnroundedCarry) &&
                 CarryPolicy.SameInput(__state.Before, _axis.x, _axis.y, _inputFrame, frame) ? frame : -1;
         } catch (Exception e) { Fail(e); }
     }
@@ -195,7 +195,7 @@ internal static class Timing
             float remainder = 0;
             string action = "ordinary";
             if (!Valid()) { RequestStop("control_changed_after_callbacks"); action = "control_changed"; }
-            else if (CarryPolicy.TryRemainder(__state.Before, __state.Delta, out remainder) && CarryPolicy.Completed(__state.Before, after)) {
+            else if (CarryPolicy.TryRemainder(__state.Before, __state.Delta, out remainder, ComparisonControl.Active && ComparisonControl.UnroundedCarry) && CarryPolicy.Completed(__state.Before, after)) {
                 action = "no_fresh_same_direction_input";
                 if (CarryPolicy.SameInput(__state.Before, __state.AxisX, __state.AxisY, __state.InputFrame, __state.Frame)) {
                     action = "pending_arrival_checks";
@@ -318,8 +318,9 @@ internal static class Timing
         row = row with { Final = next, Action = "blocked_or_changed_next_tile" };
         if (Valid() && CarryPolicy.ApprovedNext(sample.Before, next)) {
             var position = player.transform.localPosition; var advanced = position;
-            advanced.x = CarryPolicy.Rounded(next.Sx, next.Dx, row.Remainder, next.Duration);
-            advanced.y = CarryPolicy.Rounded(next.Sy, next.Dy, row.Remainder, next.Duration);
+            bool unrounded = ComparisonControl.Active && ComparisonControl.UnroundedCarry;
+            advanced.x = CarryPolicy.Position(next.Sx, next.Dx, row.Remainder, next.Duration, unrounded);
+            advanced.y = CarryPolicy.Position(next.Sy, next.Dy, row.Remainder, next.Duration, unrounded);
             try {
                 player.moveTimer = row.Remainder; player.transform.localPosition = advanced;
                 if (player.moveTimer != row.Remainder || player.transform.localPosition != advanced)

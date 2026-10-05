@@ -38,6 +38,7 @@ internal static class TestPanel
     public static void Draw()
     {
         if (_uiFailed) return;
+        if (ComparisonControl.Active) return; // The experiment displays actual A/B state.
         try {
             // Button clicks only queue a command for Update. Submit controls in
             // identical order on every GUI event so mouse/control IDs stay stable.
