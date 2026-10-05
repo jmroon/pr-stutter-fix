@@ -48,4 +48,4 @@ foreach ($output in $outputs) {
 }
 $record.Complete=$true
 $record | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifest
-Write-Host "$Game comparison installed OFF. Shift+F11 starts A/stops; Alt+F11 switches A/B; Ctrl+F11 records. CRT OFF. Restore manifest: $manifest"
+Write-Host "$Game stock movement installed OFF. Smooth walking button/Shift+F11 toggles; Ctrl+F11 records. No 8x mode; control changes still stop this preview. Restore manifest: $manifest"

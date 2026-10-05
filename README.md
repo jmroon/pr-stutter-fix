@@ -1,17 +1,14 @@
 # Pixel Remaster stutter investigation
 
-**Current experiment:** [coordinated A/B comparison](docs/unrounded-movement-test.md)
-for FFIV/FFVI, OFF by default. **Shift+F11** starts A or stops the test;
-**Alt+F11** switches A/B; **Ctrl+F11** records. Timing, display pacing and
-unrounded movement remain ON in both. **A = stock field resolution; B = 8x**. CRT OFF; old camera/player compensation stays OFF in both.
-Install the complete bundle with `scripts/Deploy-ComparisonExperiment.ps1`.
-[Rollback checkpoint and retained findings](docs/offshoot-checkpoint.md).
-The automatic runtime below is an older experiment with known transition problems.
-
-Latest FFVI walking result: the user reports stock resolution as smooth as 8x
-with timing, pacing and unrounded movement active. The capture verifies both
-conditions; stock resolution is the preferred direction for the next build.
-Cinematic and automatic scene-transition coverage remain unresolved.
+**Current build:** [stock-resolution smooth walking](docs/stock-movement-mode.md).
+Use the **Enable smooth walking (stock resolution)** button or **Shift+F11**.
+Timing, display pacing and unrounded movement run together, with no timeout.
+**Ctrl+F11** records the independent audit. The 8x renderer is absent from this
+build; Alt+F11 no longer switches resolutions. The mode starts OFF and still
+stops on control/scene changes; automatic resumption is the next checkpoint.
+Install both supported profiles with `scripts/Deploy-ComparisonExperiment.ps1`.
+[Rollback checkpoints and retained findings](docs/offshoot-checkpoint.md).
+The older automatic runtime described below remains experimental.
 
 Experimental Windows modding project investigating movement judder in **Final
 Fantasy VI Pixel Remaster**. The current development build automatically manages

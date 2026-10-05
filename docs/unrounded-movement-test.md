@@ -1,5 +1,9 @@
 # Unrounded shared movement experiment
 
+Historical A/B guide and evidence. The current 0.4.0 build uses a
+[dedicated stock-resolution button](stock-movement-mode.md); the A/B controls
+below describe earlier checkpoints.
+
 Version 0.3.1 isolates field render resolution: stock 320x180 in A versus
 8x 2560x1440 in B. Timing, pacing and shared unrounded movement stay ON in
 both modes. It changes logical positions in both and remains a temporary test, not a supported fix. No scene-ID conditions
