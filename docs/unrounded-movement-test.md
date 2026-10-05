@@ -1,8 +1,8 @@
 # Unrounded shared movement experiment
 
-Version 0.3.0 compares timing/pacing alone against timing/pacing plus the shared
-movement rounding bypass and resolution-only 8x. It changes logical positions
-in B and remains a temporary test, not a supported fix. No scene-ID conditions
+Version 0.3.1 isolates field render resolution: stock 320x180 in A versus
+8x 2560x1440 in B. Timing, pacing and shared unrounded movement stay ON in
+both modes. It changes logical positions in both and remains a temporary test, not a supported fix. No scene-ID conditions
 are used. The observer remains independent of all correction modules.
 
 ## Current coordinated comparison
@@ -14,15 +14,16 @@ Install with both games closed, selecting each title separately:
 ./scripts/Deploy-ComparisonExperiment.ps1 -Game FFIV
 ```
 
-The bundle installs Timing 0.6.3, Grid 0.9.2, UnroundedExperiment 0.3.0 and
-PresentationAudit 0.1.3. It backs up all four DLLs and both affected configs,
+The bundle installs Timing 0.6.3, Grid 0.9.2, UnroundedExperiment 0.3.1 and
+PresentationAudit 0.1.4. It backs up all four DLLs and both affected configs,
 including FFVI's older timing/grid binaries. Automatic corrections and ordinary
 debug recording remain disabled. The comparison always starts OFF.
 
 - **Shift+F11:** start **A** or stop the comparison; maximum 120 seconds total.
 - **Alt+F11:** switch A/B without restarting timing/pacing or their deadline.
-- **A:** tile-time carry + scoped display-paced VSync, stock rounding/resolution.
-- **B:** the same carry/pacing + unrounded shared movement + resolution-only 8x.
+- **Both:** tile-time carry, display-paced VSync and unrounded shared movement.
+- **A:** stock field resolution (320x180).
+- **B:** 8x field resolution (2560x1440).
 - **Ctrl+F11:** start/stop the independent 60-second audit.
 - Old camera/player compensation is OFF in both. F9 is blocked during the test;
   leave F9/F10 off outside it. F12 is unchanged.
@@ -37,14 +38,16 @@ count in both modes and completed render frames in B. Ctrl+F11 saves;
 Shift+F11 stops. Stay in one area, away from encounters/cutscene triggers.
 
 Timing now admits fractional positions and leaves the carried position unrounded
-only while B owns the comparison lease. Its normal rounded checks remain the
+throughout A and B while the comparison owns its lease. Its normal rounded checks remain the
 default; native arrival approval, fresh input and collision guards are unchanged.
 No timing/smoothing algorithm is copied into the disposable experiment. A narrow
 reflection bridge starts/stops the existing timing and pacing components and
 reports actual state. Failed startup cleans up partial ownership; failed cleanup
 retains the lease and prevents automatic takeover.
 
-Audit conditions are `timing-pacing` and `timing-pacing-unrounded-8x`.
+Audit conditions are `timing-pacing-unrounded-stock` and
+`timing-pacing-unrounded-8x`. The old `timing-pacing` condition is retained only
+for historical captures: new A includes unrounded movement.
 `comparison-invalid` is excluded. The live comparison contract checks actual
 component activity, native patch state, requested resolution and absence of old
 compensation; it does not rely on the previous frame's automatic status snapshot.
@@ -57,15 +60,22 @@ counted as an unmodified baseline. The 20 Hz audit cannot measure scanout judder
 Pacing requests VSync count 1 and leaves the native targetFrameRate value alone,
 using the previously tested display-paced path. This is not a guarantee about
 VRR/driver presentation or a universal uncapped mode. B adds GPU load and startup
-allocation. This comparison closes the missing timing/pacing condition. The first FFVI
-run is recorded below: only B was reported perfectly smooth during walking;
-the test stopped at scripted control takeover.
+allocation. The preceding 0.3.0 comparison reported perfectly smooth FFVI
+walking only in B, but changed both rounding and resolution. This new test
+isolates whether 8x is needed. Live results are pending. Cinematic support
+remains unchanged; stay in ordinary walking for this comparison.
 
 Restore the complete pre-install bundle with
 `Restore-ComparisonExperiment.ps1 -Manifest <printed-path>` (game closed).
 It verifies file ownership and refuses to overwrite subsequent changes.
 The earlier installers/restorers remain for historical deployments; use the
-complete bundle for 0.3.0. See [the pre-offshoot checkpoint](offshoot-checkpoint.md).
+complete bundle for 0.3.1. See [the pre-offshoot checkpoint](offshoot-checkpoint.md).
+
+The known smooth combined build is retained at tag
+`checkpoint/smooth-combined-walking` (`ba37e2f`), in addition to the earlier
+pre-offshoot checkpoint. Native call patches and fractional carry mode are
+established at startup and unchanged by A/B switching; only resolution starts
+or stops. Stopping the complete test restores all owned changes as before.
 
 ## Resolution-only implementation
 

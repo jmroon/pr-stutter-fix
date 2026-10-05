@@ -2,9 +2,8 @@
 
 **Current experiment:** [coordinated A/B comparison](docs/unrounded-movement-test.md)
 for FFIV/FFVI, OFF by default. **Shift+F11** starts A or stops the test;
-**Alt+F11** switches A/B; **Ctrl+F11** records. A = timing + display pacing.
-B = the same timing/pacing plus unrounded shared movement and resolution-only
-8x rendering. CRT OFF; old camera/player compensation stays OFF in both.
+**Alt+F11** switches A/B; **Ctrl+F11** records. Timing, display pacing and
+unrounded movement remain ON in both. **A = stock field resolution; B = 8x**. CRT OFF; old camera/player compensation stays OFF in both.
 Install the complete bundle with `scripts/Deploy-ComparisonExperiment.ps1`.
 [Rollback checkpoint and retained findings](docs/offshoot-checkpoint.md).
 The automatic runtime below is an older experiment with known transition problems.
