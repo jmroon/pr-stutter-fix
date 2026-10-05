@@ -32,6 +32,15 @@ The earlier successful combined experiment included timing/pacing changes that
 were disabled in these comparisons; the results do not isolate compensation as
 the necessary difference. See the latest unrounded experiment report.
 
+The subsequent resolution-only A/B test kept timing, pacing and unrounded
+movement active in both modes. The user reports stock resolution just as smooth
+as 8x, with one possible isolated blip. The audit verifies both active modes,
+fractional positions and timing work, with no evaluated spatial disagreements.
+Prefer stock resolution for the next runtime; enlarged targets have no
+established benefit for this tested walking. Scene transitions stopped the test,
+so cinematic/transition coverage remains open. See the test report for the
+actual mode sequence and limits on interpreting the possible blip.
+
 Keep the existing implementation as an experimental checkpoint. Do not extend
 the player-equals-camera residual assumption or deploy another guard-only patch.
 The next implementation should calculate each supported entity's presentation

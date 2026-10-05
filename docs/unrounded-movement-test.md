@@ -62,7 +62,8 @@ using the previously tested display-paced path. This is not a guarantee about
 VRR/driver presentation or a universal uncapped mode. B adds GPU load and startup
 allocation. The preceding 0.3.0 comparison reported perfectly smooth FFVI
 walking only in B, but changed both rounding and resolution. This new test
-isolates whether 8x is needed. Live results are pending. Cinematic support
+isolates whether 8x is needed. The first live result reports stock resolution
+as smooth as 8x; see the evidence below. Cinematic support
 remains unchanged; stay in ordinary walking for this comparison.
 
 Restore the complete pre-install bundle with
@@ -368,3 +369,62 @@ Current restore manifests, relative to `artifacts/plugin-backups/`:
 These restore the preceding 0.3.0 comparison bundle. The older installed
 PlaythroughDiagnostics dependency warning remains separate from this test's
 working independent auditor; that optional recorder is not used here.
+
+## First stock-versus-8x result: 2026-10-04
+
+Capture `20261005-031909-249-4070204e.json` contains 1,075 samples over 60 seconds,
+with no overwritten rows. The user reports stock resolution seemed just as
+smooth as 8x, with possibly one isolated blip. This favors **stock resolution**
+for the next implementation: 8x has no demonstrated perceptual benefit in this
+walking test. It does not prove equivalence in every scene or refresh-rate mode.
+
+| Condition | Samples | Observed carry increments | Fractional player observations | Camera/map matches each | Visual matches |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Stock + timing/pacing/unrounded | 216 | 28 | 111 | 216 | 1,610 |
+| 8x + timing/pacing/unrounded | 646 | 144 | 592 | 646 | 4,829 |
+| Corrections disabled | 213 | 0 | 0 | 213 | 1,610 |
+
+Stock also contains 16 fractional NPC observations; 8x contains 97. There are
+no evaluated spatial disagreements. One scroll-dummy observation lacks a visual
+root and is excluded from visual checks. Carry counts are observed increments
+within continuous conditions, not full session totals: capture began after 18
+carries had already occurred. Old compensation remained off in both modes.
+
+The actual sequence was:
+
+- 0.001 seconds: stock resolution in area 9, carried count 18.
+- 9.293 seconds: 8x in area 9, carried count 39.
+- 32.617 seconds: area 7, corrections disabled after a scene/view change.
+- 44.311 seconds: manual restart at stock resolution in area 7, count reset to 0.
+- 46.907 seconds: 8x in area 7, carried count 7.
+
+This is two A-to-B portions in different areas, not a continuous same-area
+A-B-A repeat. The second stock portion is brief (about 2.6 seconds). The log
+confirms three complete 8x activations over the entire launch: 2,712, 1,835 and
+2,808 frames; the latter part of the second and all of the third extend beyond
+this 60-second audit. Do not attribute those full counts to this capture.
+
+No comparison fault is logged. Scene/view changes stopped the test twice over
+the launch; the final session stopped on quit. During the recorded disabled
+interval, pacing also reverted to native settings. That interruption is a
+possible explanation for a visible change, but there is no timestamp tying the
+user's blip to it. The 20 Hz observer cannot diagnose a single presented-frame
+hitch or rule out unsampled stalls. Sampled update-delta medians were 8.425 ms
+at stock, 8.399 ms at 8x and 16.879 ms while disabled. Active-mode sampled maxima
+were 17.364 and 17.052 ms; these are not per-frame maximums or scanout evidence.
+Mean observation cost was 0.078 ms, aggregate peak 15.408 ms, with no per-sample
+cost available to localize that peak.
+
+The next implementation should retain timing, pacing and the shared movement
+rounding bypass while removing enlarged render targets from the normal path.
+This avoids target allocation, material rebinding and the associated rendering
+layout/effect guards. Native code ownership, supported-build checks, timing's
+manual-controller guards and appropriate pacing/context guards remain necessary.
+Then test presentation/pacing lifetimes through scripted field control without
+extending manual arrival-task continuation to scripts. CRT compatibility has not
+yet been visually verified with this stock-resolution combination.
+
+No runtime or installation changed while analyzing this capture. Raw recording,
+log, transition list and analyzer report are saved locally under ignored
+`artifacts/ff6/stock-versus-8x-first/`. The current comparison still offers both
+resolutions; this evidence determines the preferred direction for the next build.

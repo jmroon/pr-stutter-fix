@@ -8,6 +8,11 @@ Install the complete bundle with `scripts/Deploy-ComparisonExperiment.ps1`.
 [Rollback checkpoint and retained findings](docs/offshoot-checkpoint.md).
 The automatic runtime below is an older experiment with known transition problems.
 
+Latest FFVI walking result: the user reports stock resolution as smooth as 8x
+with timing, pacing and unrounded movement active. The capture verifies both
+conditions; stock resolution is the preferred direction for the next build.
+Cinematic and automatic scene-transition coverage remain unresolved.
+
 Experimental Windows modding project investigating movement judder in **Final
 Fantasy VI Pixel Remaster**. The current development build automatically manages
 three independent corrections: preserving unused tile-movement time, rendering
