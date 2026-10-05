@@ -6,6 +6,13 @@ using System.Reflection.PortableExecutable;
 using PRStutter.UnroundedExperiment;
 
 static void Check(bool ok, string reason) { if (!ok) throw new Exception(reason); }
+Check(ResolutionScale.Width(4)==1280 && ResolutionScale.Height(4)==720 && ResolutionScale.Width(8)==2560 && ResolutionScale.Height(8)==1440,"Render size mismatch");
+Check(ResolutionScale.Next(1)==4 && ResolutionScale.Next(4)==8 && ResolutionScale.Next(8)==1,"Comparison cycle mismatch");
+foreach (int invalid in new[] {0,1,2,16}) {
+    bool refused=false;
+    try { ResolutionScale.Width(invalid); } catch (ArgumentOutOfRangeException) { refused=true; }
+    Check(refused,"Unsupported allocation scale accepted");
+}
 var gate = new MovementGate(true,true,true,true,false,"field-manual","map1",1,100,200,10);
 Check(gate.Eligible(11),"Fresh manual context refused");
 foreach (var rejected in new[] { gate with { Enabled=false }, gate with { Precision=false }, gate with { Timing=false },

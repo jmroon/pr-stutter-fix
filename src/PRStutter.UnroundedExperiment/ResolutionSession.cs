@@ -28,13 +28,15 @@ internal sealed class ResolutionSession
     public int Frames => _frame.CompletedFrames;
     public long FieldPointer => _field.Pointer.ToInt64();
     public long MapPointer => _model.ToInt64();
-    public const int Scale = 8;
-    public string Summary => $"8x (2560x1440), completedFrames={Frames}, targets={_targets.Count}, materialBindings={_textures.Count}";
+    public int Scale { get; }
+    public string Summary => $"{Scale}x ({ResolutionScale.Width(Scale)}x{ResolutionScale.Height(Scale)}), completedFrames={Frames}, targets={_targets.Count}, materialBindings={_textures.Count}";
     private static bool Same(Texture? a, Texture? b) => a == null ? b == null : b != null && a.Pointer == b.Pointer;
 
-    public ResolutionSession()
+    public ResolutionSession(int scale)
     {
-        if (SystemInfo.maxTextureSize < 2560) throw new InvalidOperationException("8x exceeds GPU texture-size limit");
+        int width = ResolutionScale.Width(scale); // Validate before touching any resources.
+        Scale = scale;
+        if (SystemInfo.maxTextureSize < width) throw new InvalidOperationException($"{scale}x exceeds GPU texture-size limit");
         CameraFollowing? follow = null;
         foreach (var f in UnityEngine.Object.FindObjectsOfType<CameraFollowing>()) {
             if (f.TargetEntity == null || f.camera == null || !f.camera.isActiveAndEnabled) continue;
@@ -107,7 +109,7 @@ internal sealed class ResolutionSession
         foreach (var t in _targets) {
             t.High = new RenderTexture(t.Original);
             t.High.name = "PRStutter.ResolutionOnly." + t.Original.name;
-            t.High.width = 2560; t.High.height = 1440;
+            t.High.width = ResolutionScale.Width(Scale); t.High.height = ResolutionScale.Height(Scale);
             t.High.filterMode = t.Original.filterMode; t.High.wrapMode = t.Original.wrapMode;
             if (!t.High.Create()) throw new InvalidOperationException("High-resolution target allocation failed");
         }
@@ -126,7 +128,7 @@ internal sealed class ResolutionSession
         if (_front == null || !_front.isActiveAndEnabled || _front.targetTexture != null || _front.depth != 99 || _front.rect != new Rect(0,0,1,1) ||
             Screen.width != _width || Screen.height != _height || _compositor == null || _compositor.shader.name != "Last/PostProcessLite")
             throw new InvalidOperationException("Display/compositor changed");
-        if (_compositor.GetFloat("_FakeCRT") != 0) throw new InvalidOperationException("Turn CRT OFF before the 8x test");
+        if (_compositor.GetFloat("_FakeCRT") != 0) throw new InvalidOperationException("Turn CRT OFF before the resolution test");
         if (_compositor.GetFloat("_BlurMainGame") != 0 || _compositor.GetFloat("_PartialFadeOverlay") != 0 ||
             _compositor.GetFloat("_MainGameDiffuseBias") != _mainBias || _compositor.GetFloat("_OverlayDiffuseBias") != _overlayBias)
             throw new InvalidOperationException("Compositor effect/transition changed");
@@ -216,20 +218,21 @@ internal static class Resolution
     public static bool Faulted { get; private set; }
     public static long FieldPointer => _session?.FieldPointer ?? 0;
     public static long MapPointer => _session?.MapPointer ?? 0;
-    public static int RequestedScale => _active ? 8 : 1;
+    public static int RequestedScale => _active ? _session!.Scale : 1;
     public static int CompletedFrames => _session?.Frames ?? 0;
     public static string Note { get; private set; } = "stock 320x180";
-    public static string Label => $"FIELD RESOLUTION {(_active ? "8x 2560x1440" : "STOCK")} | Alt+F11 switches A/B | {(_active ? $"drawn frames {CompletedFrames}" : Note)}";
-    public static void Toggle(long field, long map)
+    public static void Select(int scale, long field, long map)
     {
-        if (_active) { Stop("manual"); return; }
+        if (scale is not (1 or 4 or 8)) throw new ArgumentOutOfRangeException(nameof(scale));
+        if (_active && !Stop("switch to " + ResolutionScale.Caption(scale))) return;
         if (Faulted) return;
         if (!ReleaseStopped()) return;
+        if (scale == 1) { Note = "stock 320x180"; return; }
         try {
-            _session = new ResolutionSession();
+            _session = new ResolutionSession(scale);
             if (_session.FieldPointer != field || _session.MapPointer != map) throw new InvalidOperationException("Resolution context differs from active movement context");
             _session.Initialize(); _active = true;
-            Note = "8x requested"; ResolutionHost.Note("RESOLUTION ON: " + _session.Summary + "; no pose or pacing changes");
+            Note = scale + "x requested"; ResolutionHost.Note("RESOLUTION ON: " + _session.Summary + "; no pose or pacing changes");
         } catch (Exception e) { Stop(e.Message); }
     }
     // Update is outside camera rendering. Restore immediately on a callback

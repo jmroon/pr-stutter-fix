@@ -157,7 +157,7 @@ internal static class Observer
         string baseline = condition == "off" ? Baseline() : condition;
         if (_resolutionFault?.GetValue(null) as bool? == true) baseline = "resolution-comparison-fault";
         else if (_resolutionFault != null && (_renderScale?.GetValue(null) as int? ?? 1) != 1)
-            baseline = "resolution-comparison-8x"; // Explicitly excluded from stock spatial passes.
+            baseline = "resolution-comparison-" + _renderScale!.GetValue(null) + "x"; // Explicitly excluded from stock spatial passes.
         _baseline = baseline;
         string scope = baseline is "runtime-absent" or "corrections-disabled" or "unrounded-movement" or "unrounded-movement-8x" or "timing-pacing" or "timing-pacing-unrounded-stock" or "timing-pacing-unrounded-8x" or "stock-manual" or "stock-scripted" or "stock-precision-only" ? "" : baseline;
         if (follow == null || map == null || model == null || target == null || camera == null || field.player == null) {
@@ -258,7 +258,7 @@ internal static class Observer
         var rows = _rows!.Snapshot(0); long overwritten = _rows.Overwritten; _rows = null;
         var lifecycle = _lifecycle!.Snapshot(0); long lifecycleOverwritten = _lifecycle.Overwritten; _lifecycle = null;
         Writer.TrySave(new {
-            SchemaVersion = 1, Kind = "presentation-adapter-audit", Game = Plugin.Game, Version = "0.2.1",
+            SchemaVersion = 1, Kind = "presentation-adapter-audit", Game = Plugin.Game, Version = "0.2.2",
             QpcFrequency = Stopwatch.Frequency, StartedQpc = _started, SavedQpc = Stopwatch.GetTimestamp(), Reason = reason,
             Phase = "FieldController.UpdateVisualInstancePosition.postfix", Samples = rows,
             Lifecycle = lifecycle,

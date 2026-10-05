@@ -39,4 +39,4 @@ foreach ($entry in $entries) {
 foreach ($item in $core) { if ((Get-FileHash -LiteralPath $item.Path).Hash -ne $item.Hash) { throw 'Core movement bundle changed during installation.' } }
 $record.Complete=$true
 $record | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $manifest
-Write-Host "$Game resolution add-on installed at A stock. Core movement DLLs unchanged. CRT OFF; enable smooth movement, then Alt+F11 switches A/B. Restore: $manifest"
+Write-Host "$Game resolution add-on installed at A stock. Core movement DLLs unchanged. CRT OFF; enable smooth movement, then Alt+F11 cycles A stock / B 4x / C 8x. Restore: $manifest"

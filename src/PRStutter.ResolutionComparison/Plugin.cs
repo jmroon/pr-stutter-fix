@@ -11,7 +11,7 @@ using UnityEngine;
 namespace PRStutter.UnroundedExperiment;
 
 // This add-on owns texture bindings only. The stock movement DLL is unchanged.
-[BepInPlugin("local.prstutter.resolutioncomparison", "PR Stutter Resolution Comparison", "0.1.0")]
+[BepInPlugin("local.prstutter.resolutioncomparison", "PR Stutter Resolution Comparison", "0.2.0")]
 [BepInDependency("local.prstutter.unrounded", "0.5.0")]
 public sealed class ResolutionPlugin : BasePlugin
 {
@@ -22,7 +22,7 @@ public sealed class ResolutionPlugin : BasePlugin
         MovementReader.Initialize();
         ClassInjector.RegisterTypeInIl2Cpp<ResolutionPass>();
         _driver = AddComponent<ResolutionDriver>();
-        ResolutionHost.Note("RESOLUTION COMPARISON READY: A stock; Alt+F11 switches B 8x. Enable stock smooth movement; CRT OFF. No timing/pacing writes.");
+        ResolutionHost.Note("RESOLUTION COMPARISON READY: Alt+F11 cycles A stock -> B 4x -> C 8x -> A. Enable stock smooth movement; CRT OFF. No timing/pacing writes.");
     }
     public override bool Unload()
     {
@@ -36,7 +36,7 @@ public sealed class ResolutionPlugin : BasePlugin
 public static class ResolutionStatus
 {
     public static int RequestedRenderScale => Resolution.RequestedScale;
-    public static int ResolutionCompletedFrames => Resolution.RequestedScale == 8 ? Resolution.CompletedFrames : 0;
+    public static int ResolutionCompletedFrames => Resolution.RequestedScale > 1 ? Resolution.CompletedFrames : 0;
     public static bool Faulted => Resolution.Faulted;
     public static string Status => Resolution.Note;
 }
@@ -96,7 +96,7 @@ public sealed class ResolutionDriver : MonoBehaviour
     private bool Guard()
     {
         var current = MovementReader.Read();
-        if (Resolution.RequestedScale == 8 && (!current.Eligible(Time.frameCount) || !_started.SameContext(current))) {
+        if (Resolution.RequestedScale > 1 && (!current.Eligible(Time.frameCount) || !_started.SameContext(current))) {
             Resolution.Stop("movement context changed; returned to A"); return false;
         }
         return current.Eligible(Time.frameCount);
@@ -110,18 +110,19 @@ public sealed class ResolutionDriver : MonoBehaviour
             bool toggle = _request || (Input.GetKeyDown(KeyCode.F11) && alt && !other);
             _request = false;
             if (toggle) {
-                if (Resolution.RequestedScale == 8) Resolution.Stop("manual A");
+                int next = ResolutionScale.Next(Resolution.RequestedScale);
+                if (next == 1) Resolution.Select(1,0,0);
                 else {
                     _started = MovementReader.Read();
-                    if (_started.Eligible(Time.frameCount)) { Resolution.Toggle(_started.Field, _started.Map); _nextReport=0; }
-                    else Resolution.Stop("Enable smooth movement and load ordinary walking before B");
+                    if (_started.Eligible(Time.frameCount)) { Resolution.Select(next,_started.Field,_started.Map); _nextReport=0; }
+                    else Resolution.Stop("Enable smooth movement and load ordinary walking before 4x/8x");
                 }
             }
-            _message = Resolution.Faulted ? "RESTORATION FAULT: restart game" : Resolution.RequestedScale == 8 ?
-                $"B: 8x 2560x1440 | completed frames: {Resolution.CompletedFrames}" : "A: STOCK 320x180 | " + Resolution.Note;
-            if (Resolution.RequestedScale == 8 && Stopwatch.GetTimestamp() >= _nextReport) {
+            _message = Resolution.Faulted ? "RESTORATION FAULT: restart game" : ResolutionScale.Caption(Resolution.RequestedScale) +
+                (Resolution.RequestedScale > 1 ? $" | completed frames: {Resolution.CompletedFrames}" : " | " + Resolution.Note);
+            if (Resolution.RequestedScale > 1 && Stopwatch.GetTimestamp() >= _nextReport) {
                 _nextReport = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 5;
-                ResolutionHost.Note($"RESOLUTION SAMPLE scale=8 completedFrames={Resolution.CompletedFrames} context={_started.Identity}; timing/pacing/precision active");
+                ResolutionHost.Note($"RESOLUTION SAMPLE scale={Resolution.RequestedScale} completedFrames={Resolution.CompletedFrames} context={_started.Identity}; timing/pacing/precision active");
             }
         } catch (Exception e) { Resolution.Stop("comparison error: " + e.Message); ResolutionHost.Error(e); }
     }
@@ -141,7 +142,7 @@ public sealed class ResolutionDriver : MonoBehaviour
             float width = Math.Min(620, Screen.width - 24), x = Screen.width - width - 12, y = Math.Max(12, Screen.height - 270);
             GUI.Box(new Rect(x,y,width,150), "");
             GUI.Label(new Rect(x+12,y+12,width-24,75),_message,_style);
-            if (GUI.Button(new Rect(x+12,y+90,width-24,42),Resolution.RequestedScale==8 ? "Return to A: stock (Alt+F11)" : "Try B: 8x (Alt+F11)")) _request=true;
+            if (GUI.Button(new Rect(x+12,y+90,width-24,42),"Switch to " + ResolutionScale.Caption(ResolutionScale.Next(Resolution.RequestedScale)) + " (Alt+F11)")) _request=true;
         } catch { }
     }
     public void OnApplicationFocus(bool focused) { if (!focused) Resolution.Stop("focus lost; returned to A"); }

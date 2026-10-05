@@ -166,35 +166,35 @@ Local evidence (ignored, contains game-derived recordings):
 
 ## Temporary 165 Hz resolution comparison
 
-`PRStutter.ResolutionComparison` 0.1.0 is an optional, independently removable
+`PRStutter.ResolutionComparison` 0.2.0 is an optional, independently removable
 add-on. It links the previously inspected resolution-only session as source;
 the stock movement DLL still excludes that implementation. No changes to
 movement, timing, pacing, transforms or camera projection are made by the add-on.
 
 Use FFVI at 165 Hz with CRT **off in both A and B**. Enable Smooth movement,
-then press **Ctrl+F11** to record one minute. Walk the same ordinary route in
-**A: stock** for about 15 seconds, press **Alt+F11** for **B: 8x**, walk about
-20 seconds, then press **Alt+F11** again and repeat A. The add-on also has a
-separate A/B button. B must show an increasing completed-frame counter; a refused
-or suspended B is not a valid visual comparison. Avoid menus and scene changes.
+then press **Ctrl+F11** to record one minute. **Alt+F11** cycles **A: stock ->
+B: 4x -> C: 8x -> A**. Walk the same ordinary route for roughly 10 seconds in A,
+20 in B, 20 in C, then return to A. The add-on also has a separate cycle button.
+B and C must show an increasing completed-frame counter; a refused or suspended
+mode is not a valid visual comparison. Avoid menus and scene changes.
 Keep other settings unchanged and do not enable the historical F9/F10 renderer.
 
-A uses native 320x180 field targets. B replaces only their camera/material
-texture bindings with 2560x1440 targets for drawing, restoring bindings after
+A uses native 320x180 field targets. B uses 1280x720 and C uses 2560x1440.
+Both replace only camera/material texture bindings for drawing, restoring them after
 the compositor. Texture ownership, topology, CRT/effect and draw-order guards
 remain from the earlier comparison. Binding cleanup precedes texture release.
 It starts in A and returns to A on focus loss, changed field/controller context,
-loss of any required movement component, or render validation failure. B does
+loss of any required movement component, or render validation failure. B/C do
 not resume automatically and does not enable/disable the movement fix. Cleanup
 failure is latched and requires restarting the game.
 
-Audit 0.2.1 detects the optional add-on without an assembly dependency. It records
+Audit 0.2.2 detects the optional add-on without an assembly dependency. It records
 requested scale and completed render frames in spatial and lifecycle samples.
-B is explicitly labeled `resolution-comparison-8x` and excluded from stock
-spatial passes; its actual rendering must be checked using completed frames and
+B/C are explicitly labeled `resolution-comparison-4x` / `resolution-comparison-8x`
+and excluded from stock spatial passes; actual rendering is checked using completed frames and
 the movement flags. The separate timestamped `resolution-comparison.log` records
 switches, returns to stock and frame counts. Core pacing logs remain unchanged.
-The earlier F8 startup hitch makes Ctrl+F11 preferable for this visual A/B test.
+The earlier F8 startup hitch makes Ctrl+F11 preferable for this visual comparison.
 
 ```powershell
 ./scripts/Deploy-ResolutionComparison.ps1 -Game FFVI
@@ -207,3 +207,13 @@ add-on if it was absent before installation and restores the previous audit.
 `checkpoint/pre-165-resolution-comparison` (`40b1bc6`) preserves the preceding
 source state. Both profile builds, movement-context checks, scoped ownership and
 draw-order checks pass; visual A/B behavior and performance remain live tests.
+
+The first 165 Hz 8x test (`20261005-184404-173-bf68fe0f`) recorded 537 stock and
+347 8x spatial samples, all with timing, pacing and precision active except one
+excluded focus-loss sample. The first 8x session completed 2,037 frames, and the
+user reported an improvement. Update-rate logs stayed around 165 FPS; no new
+PresentMon trace was collected. The 4x addition tests whether 1280x720 retains
+that benefit with one-quarter of 8x's target pixels. This is not yet Steam Deck
+compatibility or performance evidence. `checkpoint/pre-4x-resolution-comparison`
+preserves the previous two-mode add-on. Scale changes restore and release the
+previous session before allocating the next, and reset its completed-frame count.
