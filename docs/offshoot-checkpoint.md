@@ -3,7 +3,9 @@
 The requested approximately 9:46 PM checkpoint is **`fa00647`**, committed
 **2026-10-04 21:45:46 America/Toronto**, titled “Record FFVI cinematic audit and
 unresolved transition disagreement”. Tag: **`checkpoint/pre-unrounded-offshoot`**.
-Do not roll back yet: the coordinated timing/pacing A/B comparison is pending.
+Do not roll back: the first coordinated FFVI comparison now reports perfectly
+smooth walking in B only. Scripted takeover stopped the entire comparison, so
+cinematic coverage remains open. The requested fallback is still preserved.
 
 If this direction is abandoned, return source/runtime behavior to that checkpoint
 without erasing the experiment history. The user's conversation fork supplies the

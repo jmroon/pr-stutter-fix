@@ -22,7 +22,11 @@ sampled camera/map/visual agreement. Before moving to final-pixel and
 presentation-cadence diagnosis, the user requested one missing comparison:
 A = timing/pacing alone; B = the same timing/pacing with unrounded movement and
 resolution-only 8x, with old compensation disabled throughout. This coordinated
-test is implemented; live results are pending. The pre-offshoot rollback point
+test is implemented. The first FFVI run reports perfectly smooth walking in B
+only, with timing carries and completed 8x draws verified. At scripted takeover
+the manual-control guards stopped all components. Extending component lifetimes
+through supported field cinematics is the next general test; that sequence was
+not a failure of an active full combination. The pre-offshoot rollback point
 is [preserved separately](offshoot-checkpoint.md).
 The earlier successful combined experiment included timing/pacing changes that
 were disabled in these comparisons; the results do not isolate compensation as
