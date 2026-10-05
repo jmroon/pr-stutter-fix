@@ -352,3 +352,19 @@ Raw capture, copied log and analyzer output are preserved locally in ignored
 `artifacts/ff6/coordinated-unrounded-first/`. No runtime code or installation was
 changed while analyzing this result. The pre-offshoot tag remains available;
 the observed B walking improvement does not meet the user's rollback condition.
+
+## Resolution-only A/B deployment
+
+UnroundedExperiment 0.3.1 and PresentationAudit 0.1.4 are installed for FFVI and
+FFIV. Both profile build/check suites passed with no warnings or errors; all 63
+Python tests passed. Installed DLL/config hashes and all backup hashes verified.
+Timing 0.6.3 and Grid 0.9.2 are unchanged. Live stock-versus-8x results are pending.
+
+Current restore manifests, relative to `artifacts/plugin-backups/`:
+
+- FFVI: `comparison-FFVI-20261005-031607-475/manifest.json`
+- FFIV: `comparison-FFIV-20261005-031613-809/manifest.json`
+
+These restore the preceding 0.3.0 comparison bundle. The older installed
+PlaythroughDiagnostics dependency warning remains separate from this test's
+working independent auditor; that optional recorder is not used here.
