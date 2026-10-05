@@ -8,6 +8,21 @@ spec.loader.exec_module(audit)
 
 
 class AuditAnalysisTests(unittest.TestCase):
+    def test_unrounded_is_measured_but_not_counted_as_native_baseline(self):
+        d=self.fixture();a=self.sample();b=self.sample(50,baseline='unrounded-movement')
+        b['Entities'][0]['LogicalWorld']=dict(X=.25,Y=0)
+        b['TargetWorld']=dict(X=.25,Y=0)
+        d['Samples']=[a,b];r=audit.summarize(d)
+        self.assertEqual(r['clean_samples'],1)
+        self.assertEqual(r['experiment_samples'],1)
+        self.assertEqual(r['checks_by_condition']['unrounded-movement']['visual'],{'match':1})
+        self.assertEqual(r['fractional_logical_observations'],{'unrounded-movement':{'player':1}})
+        self.assertEqual(r['observed_patterns'],{}) # Do not infer motion across a toggle.
+
+    def test_faulted_unrounded_status_is_excluded(self):
+        d=self.fixture();d['Samples']=[self.sample(baseline='unrounded-status-unknown-or-fault')]
+        self.assertEqual(audit.summarize(d)['outcome'],'no-clean-comparisons')
+
     def fixture(self):
         return dict(Kind='presentation-adapter-audit',SchemaVersion=1,QpcFrequency=1000,Game='FFIV',Reason='manual',Phase='postfix',Samples=[])
 

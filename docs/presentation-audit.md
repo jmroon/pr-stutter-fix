@@ -1,6 +1,6 @@
 # Read-only presentation adapter audit
 
-Version 0.1.0 is an independent diagnostic plugin for the inspected FFIV and
+Version 0.1.1 is an independent diagnostic plugin for the inspected FFIV and
 FFVI builds. It does not replace or extend the correction runtime. The purpose
 is to check whether shared native position equations explain field rendering
 before implementing a new correction.
@@ -69,6 +69,12 @@ cached reflection, supporting both the older FFVI and current FFIV status shape.
 If that runtime is present but its status cannot be read, the sample is excluded.
 If its master or any component is enabled, the sample is excluded. Runtime
 absence is recorded separately; this is not a detector for every third-party mod.
+
+Version 0.1.1 also optionally reads the independent unrounded experiment's status.
+Test-on samples are explicitly labeled `unrounded-movement`; their mapping checks
+remain evaluable, but the analyzer separates their counts from baseline samples.
+Unknown/faulted experiment state is excluded. Fractional logical observations are
+reported by condition and entity role. See [the test guide](unrounded-movement-test.md).
 
 ## Predictions and raw evidence
 

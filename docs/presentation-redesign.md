@@ -2,6 +2,12 @@
 
 ## Decision
 
+Update: before implementing the presentation replacement, test the narrower
+[unrounded shared movement experiment](unrounded-movement-test.md). The design
+below remains a fallback under investigation. Logical-position rounding has not
+been proven necessary for gameplay; changing it before native collider updates
+is materially different from replacing positions afterward.
+
 Keep the existing implementation as an experimental checkpoint. Do not extend
 the player-equals-camera residual assumption or deploy another guard-only patch.
 The next implementation should calculate each supported entity's presentation
@@ -61,7 +67,7 @@ were cross-checked against metadata and assembly.
 | Stage | FFIV RVA | FFVI RVA | Finding |
 | --- | --- | --- | --- |
 | `FieldEntity.UpdateEntity` | `0xBDCBA0` | `0xFE9E20` | Linear segment timer/endpoints exist below player-specific code. IV clamps at half duration; both clear time at completion. |
-| `FieldSpriteEntity.UpdateEntity` | `0xBDFDB0` | `0xE10200` | IV includes inlined movement code; hooking the base method alone would miss this path. |
+| `FieldSpriteEntity.UpdateEntity` | `0xBDFDB0` | `0xE10200` | IV assembly tail-jumps to the shared base update; earlier inferred C misleadingly expanded that call. VI dispatches the position helper virtually. |
 | `FieldCharaEntity.UpdateEntity` | `0x860600` | `0xFE1510` | IV updates collider offset after movement to destination minus current position. |
 | `CameraFollowing.UpdateController` | `0x2D1F30` | `0x3487B0` | Reads its target's position, adds map scroll, clamps, adds camera offset, then invokes rendering callbacks. |
 | `BaseMapRenderer.UpdateMapScrollIfNeed` | `0x4AD4E0` | `0xB2A9C0` | Separate render mapping clamps input before adding offset; fractional input reaches map-root positioning. |
@@ -79,8 +85,8 @@ the logical entity. Do not infer matching semantics merely from field names:
 native subtype overrides, custom interpolation, attachments and jumps require
 admission checks or separate adapters.
 
-IV's sprite update uses the timer for linked animation before its inlined
-movement step. Character update subsequently adjusts the collider. Therefore,
+IV's sprite update uses the timer for linked animation before tail-calling the
+shared movement step. Character update subsequently adjusts the collider. Therefore,
 changing logical position after FieldPlayer.UpdateEntity is not an isolated
 visual correction. Removing the midpoint clamp globally is also unjustified:
 its gameplay purpose remains unknown. Timing repair must account for animation,

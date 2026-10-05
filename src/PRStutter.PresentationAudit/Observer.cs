@@ -22,6 +22,8 @@ internal static class Observer
     private static PropertyInfo? _runtimeCurrent;
     private static PropertyInfo[]? _runtimeFlags;
     private static bool _runtimePresent;
+    private static bool _unroundedPresent;
+    private static PropertyInfo? _unroundedState;
     private static string _baseline = "waiting for field";
     public static bool Expired => Window.Expired(Stopwatch.GetTimestamp());
     public static string Status => Window.Active ? $"Audit RECORDING {Math.Min(60, (Stopwatch.GetTimestamp() - _started) / Stopwatch.Frequency)} / 60s | {_samples} samples | {_baseline} | Ctrl+F11 stop" : _status + " | " + Writer.Status;
@@ -33,7 +35,12 @@ internal static class Observer
         _baseline = "waiting for field";
         _ticks = _maxTicks = 0; _started = Stopwatch.GetTimestamp();
         _runtimeCurrent = null; _runtimeFlags = null; _runtimePresent = false;
+        _unroundedPresent = false; _unroundedState = null;
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
+            if (assembly.GetName().Name == "PRStutter.UnroundedExperiment") {
+                _unroundedPresent = true;
+                _unroundedState = assembly.GetType("PRStutter.UnroundedExperiment.ExperimentStatus")?.GetProperty("State", BindingFlags.Static | BindingFlags.Public);
+            }
             if (assembly.GetName().Name != "PRStutter.TimingExperiment") continue;
             _runtimePresent = true;
             var type = assembly.GetType("PRStutter.TimingExperiment.CorrectionStatus");
@@ -52,12 +59,18 @@ internal static class Observer
     }
     private static string Baseline()
     {
-        if (!_runtimePresent) return "runtime-absent";
-        if (_runtimeCurrent == null || _runtimeFlags == null) return "runtime-status-unknown";
-        var snapshot = _runtimeCurrent.GetValue(null);
-        if (snapshot == null) return "runtime-status-unknown";
-        foreach (var property in _runtimeFlags) if ((bool)property.GetValue(snapshot)!) return "corrections-enabled";
-        return "corrections-disabled";
+        if (_runtimePresent) {
+            if (_runtimeCurrent == null || _runtimeFlags == null) return "runtime-status-unknown";
+            var snapshot = _runtimeCurrent.GetValue(null);
+            if (snapshot == null) return "runtime-status-unknown";
+            foreach (var property in _runtimeFlags) if ((bool)property.GetValue(snapshot)!) return "corrections-enabled";
+        }
+        if (_unroundedPresent) {
+            string? state = _unroundedState?.GetValue(null) as string;
+            if (state == "on") return "unrounded-movement";
+            if (state != "off") return "unrounded-status-unknown-or-fault";
+        }
+        return _runtimePresent ? "corrections-disabled" : "runtime-absent";
     }
     private static Point P(Vector3 v) => new(v.x, v.y, v.z);
     private static Point P(Vector2 v) => new(v.x, v.y);
@@ -82,7 +95,7 @@ internal static class Observer
         var camera = follow?.camera;
         string baseline = Baseline();
         _baseline = baseline;
-        string scope = baseline is "runtime-absent" or "corrections-disabled" ? "" : baseline;
+        string scope = baseline is "runtime-absent" or "corrections-disabled" or "unrounded-movement" ? "" : baseline;
         if (follow == null || map == null || model == null || target == null || camera == null || field.player == null) {
             _rows!.Add(qpc, new { Qpc = qpc, Frame = Time.frameCount, Area = field.currentAreaId, Baseline = baseline, Status = "missing-field-input" });
             _samples++; return;
@@ -176,7 +189,7 @@ internal static class Observer
         Window.Stop();
         var rows = _rows!.Snapshot(0); long overwritten = _rows.Overwritten; _rows = null;
         Writer.TrySave(new {
-            SchemaVersion = 1, Kind = "presentation-adapter-audit", Game = Plugin.Game, Version = "0.1.0",
+            SchemaVersion = 1, Kind = "presentation-adapter-audit", Game = Plugin.Game, Version = "0.1.1",
             QpcFrequency = Stopwatch.Frequency, StartedQpc = _started, SavedQpc = Stopwatch.GetTimestamp(), Reason = reason,
             Phase = "FieldController.UpdateVisualInstancePosition.postfix", Samples = rows,
             Overhead = new { SampleCount = _samples, TotalTicks = _ticks, MaxTicks = _maxTicks, Overwritten = overwritten },

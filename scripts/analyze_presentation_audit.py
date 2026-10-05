@@ -18,10 +18,14 @@ def summarize(data):
     previous = None
     previous_entities = {}
     clean_samples = 0
+    experiment_samples = 0
+    by_condition = defaultdict(lambda: {k: Counter() for k in checks})
+    fractional = defaultdict(Counter)
+    comparable = ('runtime-absent', 'corrections-disabled', 'unrounded-movement')
 
     def check(kind, value, sample, entity=None):
         status = value.get('Status', 'missing-check')
-        if sample['Baseline'] not in ('runtime-absent', 'corrections-disabled'):
+        if sample['Baseline'] not in comparable:
             status = 'baseline-excluded'
         # Stored status is not enough: independently recompute observed XY error.
         if status in ('match', 'mismatch'):
@@ -35,6 +39,7 @@ def summarize(data):
             except (KeyError, TypeError, ValueError):
                 status = 'invalid-check'
         checks[kind][status] += 1
+        by_condition[sample['Baseline']][kind][status] += 1
         if entity is not None:
             roles[entity['Role']][status] += 1
         if status in ('mismatch', 'invalid-check', 'nonfinite') and len(examples) < 12:
@@ -54,15 +59,18 @@ def summarize(data):
             previous = None
             previous_entities.clear()
             continue
-        clean = s['Baseline'] in ('runtime-absent', 'corrections-disabled')
-        clean_samples += clean
+        clean = s['Baseline'] in comparable
+        clean_samples += s['Baseline'] in ('runtime-absent', 'corrections-disabled')
+        experiment_samples += s['Baseline'] == 'unrounded-movement'
         check('camera', s.get('CameraCheck', {}), s)
         check('map', s.get('MapCheck', {}), s)
         for entity in s['Entities']:
             check('visual', entity.get('VisualCheck', {}), s, entity)
             if clean and entity.get('FollowTarget'):
                 target_roles[entity['Role']] += 1
-        identity = (s['Controller'], s['Area'], s['TargetId'], s['CameraId'], s['View'])
+            if clean and finite_xy(entity['LogicalWorld']) and any(abs(v-round(v)) > .002 for v in xy(entity['LogicalWorld'])):
+                fractional[s['Baseline']][entity['Role']] += 1
+        identity = (s['Controller'], s['Area'], s['TargetId'], s['CameraId'], s['View'], s['Baseline'])
         if not finite_xy(s['TargetWorld']) or not finite_xy(s['CameraWorld']):
             previous = None
             previous_entities.clear()
@@ -101,15 +109,17 @@ def summarize(data):
     overhead = data.get('Overhead', {})
     count = overhead.get('SampleCount', 0)
     return dict(game=data['Game'], reason=data['Reason'], phase=data['Phase'], samples=dict(rows),
-                clean_samples=clean_samples, baselines=dict(baselines),
+                clean_samples=clean_samples, experiment_samples=experiment_samples, baselines=dict(baselines),
                 outcome='disagreements-found' if failed else 'observed-checks-match' if compared else 'no-clean-comparisons',
                 checks={k: dict(v) for k, v in checks.items()},
+                checks_by_condition={b: {k: dict(v) for k, v in c.items()} for b, c in by_condition.items()},
+                fractional_logical_observations={b: dict(v) for b, v in fractional.items()},
                 max_error_units={k: max(v, default=None) for k, v in errors.items()},
                 visual_by_role={k: dict(v) for k, v in roles.items()}, follow_target_roles=dict(target_roles),
                 observed_patterns=dict(patterns), examples=examples,
                 observer_mean_ms=overhead.get('TotalTicks', 0)*1000/data['QpcFrequency']/count if count else None,
                 observer_max_ms=overhead.get('MaxTicks', 0)*1000/data['QpcFrequency'],
-                limitations='Sampled native XY agreement only. Unobserved roles/modes are untested; excluded checks are not matches. Camera-step patterns do not identify their cause. No final-render, shadow/material, jitter or timing-correction proof.')
+                limitations='Sampled XY mapping agreement only; unrounded-movement samples are an experiment, not an unmodified baseline. Fractional observations do not establish gameplay safety. Unobserved roles/modes are untested; excluded checks are not matches. Camera-step patterns do not identify their cause. No final-render, shadow/material, jitter or timing-correction proof.')
 
 
 if __name__ == '__main__':

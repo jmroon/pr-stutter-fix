@@ -1,5 +1,11 @@
 # Pixel Remaster stutter investigation
 
+**Current experiment:** [unrounded shared movement](docs/unrounded-movement-test.md)
+for FFIV/FFVI, OFF by default and toggled with Shift+F11. This isolates movement
+rounding with the older corrections disabled. Ctrl+F11 records the independent
+presentation audit. The automatic runtime described below remains an older
+experimental checkpoint with known transition problems.
+
 Experimental Windows modding project investigating movement judder in **Final
 Fantasy VI Pixel Remaster**. The current development build automatically manages
 three independent corrections: preserving unused tile-movement time, rendering

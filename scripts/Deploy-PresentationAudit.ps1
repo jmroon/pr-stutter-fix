@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([ValidateSet('FFVI','FFIV')][string]$Game = 'FFIV')
+param([ValidateSet('FFVI','FFIV')][string]$Game = 'FFIV', [switch]$PassThru)
 $ErrorActionPreference = 'Stop'
 $auditRoot = Split-Path $PSScriptRoot -Parent
 . "$PSScriptRoot/Get-GameProfile.ps1"
@@ -48,7 +48,7 @@ foreach ($path in @($dll,$timing,$debug)) {
     $entries += [ordered]@{Path=$path; Previous=$exists; Backup=$saved; PreviousHash=$(if($exists){(Get-FileHash -LiteralPath $path).Hash}else{$null}); InstalledHash=$null}
 }
 $manifest = Join-Path $backup 'manifest.json'
-$deployment = [ordered]@{Game=$Game; Version='0.1.0'; GitCommit=(git -C $auditRoot rev-parse HEAD); Files=$entries; Complete=$false; RuntimeVerified=$false}
+$deployment = [ordered]@{Game=$Game; Version='0.1.1'; GitCommit=(git -C $auditRoot rev-parse HEAD); Files=$entries; Complete=$false; RuntimeVerified=$false}
 $deployment | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifest
 foreach ($path in @($dll,$timing,$debug)) {
     if (Get-Process -Name $auditProfile.Process -ErrorAction SilentlyContinue) { throw "Game started; installation incomplete. Backups: $backup" }
@@ -63,3 +63,4 @@ if ([System.IO.File]::ReadAllText($timing) -ne $timingText -or [System.IO.File]:
 $deployment.Complete=$true
 $deployment | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifest
 Write-Host "$Game audit installed; corrections and normal diagnostics OFF. Ctrl+F11 starts/stops 60 seconds. Restore manifest: $manifest"
+if ($PassThru) { [pscustomobject]@{Manifest=$manifest; Game=$Game} }
