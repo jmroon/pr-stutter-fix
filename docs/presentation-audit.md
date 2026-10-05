@@ -114,8 +114,9 @@ Both game profiles build and pass pure geometry/window checks and compiled
 dependency/mutation audits. Tests cover map boundaries, small maps, wrapping,
 offset order, layer scaling, exclusions, invalid values and timing bounds.
 The analyzer independently recomputes XY errors from recorded expected/observed
-values and never counts an excluded comparison as a match. The first FFIV live
-result is recorded below; FFVI live agreement remains pending.
+values and never counts an excluded comparison as a match. Initial live results
+for both titles are recorded below; FFVI includes one unresolved transition
+disagreement.
 
 ## First FFIV live result: 2026-10-04
 
@@ -156,6 +157,71 @@ measure complete frame delivery or demonstrate imperceptible diagnostic cost.
 This establishes native XY agreement for the observed FFIV ordinary field
 behaviors. It does not validate fractional corrections, shadow/material ownership,
 final render ordering, timing repair, looping maps, sustained cinematic pans or
-FFVI. The next cross-title check is an equivalent short FFVI baseline capture;
-Ctrl+F11 can stop it as soon as the route is complete. Raw captures and local
+FFVI. The subsequent cross-title check is recorded below. Ctrl+F11 can stop a
+capture as soon as the route is complete. Raw captures and local
 analysis remain in ignored `artifacts/ff4/presentation-audit-first/`.
+
+## First FFVI live result: 2026-10-04
+
+Capture `20261005-014344-411-4633dacc.json` uses the same audit 0.1.0 with
+corrections disabled throughout. The user walked in the Narshe cave and continued
+into the cinematic before the moogle battle. The 60.011-second recording has
+860 field observations, ending at 48.956 seconds. The final interval without
+field samples does not establish battle behavior or distinguish battle, menu,
+loading and other reasons for absence of callbacks.
+
+| Comparison | Matches | Mismatches | Excluded |
+| --- | ---: | ---: | ---: |
+| Camera position | 859 | 1 | 0 |
+| Map scroll | 859 | 1 | 0 |
+| Entity visual position | 5,704 | 0 | 753 |
+
+All matches have zero recorded XY error. Visual matches comprise 110 player,
+5,558 NPC and 36 other-entity observations. The 753 exclusions are scroll-dummy
+targets with no drawable root, not failed actor mappings. Of those target
+observations, 752 camera/map comparisons match and one disagrees. Unlike the
+FFIV capture's isolated target switches, this run includes sustained scripted
+camera motion: 91 consecutive moving-target pairs use the scroll dummy.
+Six distinct NPCs move across sampled pairs, including movement while the
+camera stays stationary. Native map dimensions change through 57x66, 29x47
+and 15x26 cells. All recorded layer scales are (1,1), loop flags are false,
+and ClampTileSubY is zero; other values remain live-unverified.
+
+### Transition disagreement remains a failure
+
+At frame 2375 (14.116 seconds), camera and map both remain at (-32,344),
+matching their previous sampled positions. The same scroll-dummy target has
+changed from (-32,328) to (-48,312); adding the unchanged (0,16) scroll predicts
+(-48,328). Both checks therefore disagree by 16 units on each axis. The player
+also relocates in this sample. Its visual, and all other sampled drawable
+entities, still agree with mapping relative to the actual camera.
+
+The next sample is 1.105 seconds later, with different map dimensions and
+matching positions again. This is consistent with a transition temporarily
+exposing newer target state alongside older camera/map state. It is not proof
+of the exact callback sequence, a one-frame duration, or a visible glitch.
+The analyzer correctly retains `disagreements-found`; no tolerance increase,
+scene-specific exception or retrospective exclusion was added.
+
+Existing FFVI native inspection confirms that CameraFollowing.UpdateController
+(RVA 0x3487B0) reads the target transform directly. FieldController.UpdateController
+(0x31B5E0) performs camera updates before visual positioning, with intervening
+work; ChangeCameraTarget (0x2F94F0) also invokes camera updating. A visual-postfix
+snapshot alone cannot establish which inputs produced a previous camera update.
+The replacement must associate camera inputs/output with the same update and
+validate them at the application boundary. On disagreement it must leave native
+presentation in control, invalidate stale motion history and resume when coherent,
+without rebuilding render resources or disabling unrelated timing/pacing.
+
+No observer fault or ring overwrite was recorded. Mean sampled observer cost
+is 0.098 ms, maximum 19.907 ms; aggregate timing cannot locate or explain the
+peak. This is spatial evidence, not delivered-frame or diagnostic-overhead proof.
+Raw capture, log, analyzer report and coverage breakdown remain in ignored
+`artifacts/ff6/presentation-audit-first/`. No runtime was changed for this analysis.
+
+The two captures support shared ordinary-field mapping and this FFVI scripted
+camera path. Next work is coherent update snapshots and visual/render ownership,
+with regression cases for target relocation and scene replacement. A further
+user replay is not needed to identify those implementation requirements. Final
+render ordering, shadows/materials, fractional correction and unsupported modes
+still require verification before general smoothing can be claimed.

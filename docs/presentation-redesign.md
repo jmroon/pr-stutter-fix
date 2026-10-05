@@ -201,6 +201,16 @@ without applying corrections. It replaces neither the old smoothing algorithm
 nor its lifecycle. The first FFIV capture now demonstrates exact native XY
 agreement for evaluated ordinary field camera/map/entity observations, including
 moving NPCs and intervals with a moving target and stationary camera. See the
-audit report for counts and exclusions. FFVI, looping maps and sustained
-scroll-dummy pans remain unverified; airship-view samples were excluded. Visual
-ownership and final rendering order remain separate gates before mutation.
+audit report for counts and exclusions. The subsequent FFVI capture includes
+sustained scroll-dummy pans and independent NPC motion: all 5,704 evaluated
+visual positions match, while camera/map comparisons each have one disagreement
+near a map transition. This remains an unresolved failure, consistent with
+different update stages exposing different target/camera state. Do not infer a
+visible defect or one-frame duration from the sampled recording.
+
+Before mutation, associate native camera inputs and outputs with the same update,
+validate coherence at application, and reset stale motion history on relocation
+or scene replacement. Add regressions for mismatched generations, transient
+disagreement/recovery and replacement without scene-ID exceptions. Visual
+ownership and final rendering order remain separate gates. Looping maps,
+non-unit layer scales and alternate airship views remain live-unverified.
