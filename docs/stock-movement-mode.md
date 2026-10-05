@@ -163,3 +163,47 @@ Local evidence (ignored, contains game-derived recordings):
 - `artifacts/measurements/20261005-170547-571/`: 165 Hz ETW, motion and logs.
 - `artifacts/measurements/analyze-refresh-pair.py`: reproducible paired analysis.
 - `artifacts/measurements/refresh-comparison-20261005.json`: paired results.
+
+## Temporary 165 Hz resolution comparison
+
+`PRStutter.ResolutionComparison` 0.1.0 is an optional, independently removable
+add-on. It links the previously inspected resolution-only session as source;
+the stock movement DLL still excludes that implementation. No changes to
+movement, timing, pacing, transforms or camera projection are made by the add-on.
+
+Use FFVI at 165 Hz with CRT **off in both A and B**. Enable Smooth movement,
+then press **Ctrl+F11** to record one minute. Walk the same ordinary route in
+**A: stock** for about 15 seconds, press **Alt+F11** for **B: 8x**, walk about
+20 seconds, then press **Alt+F11** again and repeat A. The add-on also has a
+separate A/B button. B must show an increasing completed-frame counter; a refused
+or suspended B is not a valid visual comparison. Avoid menus and scene changes.
+Keep other settings unchanged and do not enable the historical F9/F10 renderer.
+
+A uses native 320x180 field targets. B replaces only their camera/material
+texture bindings with 2560x1440 targets for drawing, restoring bindings after
+the compositor. Texture ownership, topology, CRT/effect and draw-order guards
+remain from the earlier comparison. Binding cleanup precedes texture release.
+It starts in A and returns to A on focus loss, changed field/controller context,
+loss of any required movement component, or render validation failure. B does
+not resume automatically and does not enable/disable the movement fix. Cleanup
+failure is latched and requires restarting the game.
+
+Audit 0.2.1 detects the optional add-on without an assembly dependency. It records
+requested scale and completed render frames in spatial and lifecycle samples.
+B is explicitly labeled `resolution-comparison-8x` and excluded from stock
+spatial passes; its actual rendering must be checked using completed frames and
+the movement flags. The separate timestamped `resolution-comparison.log` records
+switches, returns to stock and frame counts. Core pacing logs remain unchanged.
+The earlier F8 startup hitch makes Ctrl+F11 preferable for this visual A/B test.
+
+```powershell
+./scripts/Deploy-ResolutionComparison.ps1 -Game FFVI
+./scripts/Restore-ResolutionComparison.ps1 -Manifest <printed-manifest.json>
+```
+
+Installation backs up/replaces only the add-on and audit DLLs, verifying that the
+three core correction DLL hashes remain unchanged. Restoration removes the new
+add-on if it was absent before installation and restores the previous audit.
+`checkpoint/pre-165-resolution-comparison` (`40b1bc6`) preserves the preceding
+source state. Both profile builds, movement-context checks, scoped ownership and
+draw-order checks pass; visual A/B behavior and performance remain live tests.

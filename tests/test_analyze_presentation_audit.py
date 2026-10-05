@@ -8,6 +8,16 @@ spec.loader.exec_module(audit)
 
 
 class AuditAnalysisTests(unittest.TestCase):
+    def test_resolution_addon_is_not_a_stock_spatial_pass(self):
+        d = self.fixture()
+        s = self.stock_sample()
+        s.update(Baseline='resolution-comparison-8x', RequestedRenderScale=8, ResolutionCompletedFrames=123)
+        d['Samples'] = [s]
+        report = audit.summarize(d)
+        self.assertEqual(report['outcome'], 'no-clean-comparisons')
+        self.assertEqual(report['resolution_max_completed_frames'], {'resolution-comparison-8x':123})
+        self.assertEqual(report['baselines'], {'resolution-comparison-8x':1})
+
     def stock_sample(self, qpc=0, mode='stock-manual'):
         s = self.sample(qpc, baseline=mode)
         s['MapModel'] = 10

@@ -26,6 +26,8 @@ internal sealed class ResolutionSession
     private readonly float _mainBias, _overlayBias;
     private ResolutionPass? _final;
     public int Frames => _frame.CompletedFrames;
+    public long FieldPointer => _field.Pointer.ToInt64();
+    public long MapPointer => _model.ToInt64();
     public const int Scale = 8;
     public string Summary => $"8x (2560x1440), completedFrames={Frames}, targets={_targets.Count}, materialBindings={_textures.Count}";
     private static bool Same(Texture? a, Texture? b) => a == null ? b == null : b != null && a.Pointer == b.Pointer;
@@ -75,7 +77,7 @@ internal sealed class ResolutionSession
             _cameras.Add(new CameraBinding(c,target));
         }
         _front = front ?? throw new InvalidOperationException("No compositor camera");
-        if (!FieldLayoutPolicy.Accepts(Experiment.Game,names,_targets.Count) || _front.targetTexture != null || _front.depth != 99 || _front.rect != new Rect(0,0,1,1))
+        if (!FieldLayoutPolicy.Accepts(ResolutionHost.Game,names,_targets.Count) || _front.targetTexture != null || _front.depth != 99 || _front.rect != new Rect(0,0,1,1))
             throw new InvalidOperationException("Unsupported field target layout");
         var main = _cameras.Find(c => c.Camera.name == "CameraFieldMain")!;
         _logicalCamera = main.Camera;
@@ -212,18 +214,22 @@ internal static class Resolution
     private static ResolutionSession? _session;
     private static bool _active, _stopping;
     public static bool Faulted { get; private set; }
+    public static long FieldPointer => _session?.FieldPointer ?? 0;
+    public static long MapPointer => _session?.MapPointer ?? 0;
     public static int RequestedScale => _active ? 8 : 1;
     public static int CompletedFrames => _session?.Frames ?? 0;
     public static string Note { get; private set; } = "stock 320x180";
     public static string Label => $"FIELD RESOLUTION {(_active ? "8x 2560x1440" : "STOCK")} | Alt+F11 switches A/B | {(_active ? $"drawn frames {CompletedFrames}" : Note)}";
-    public static void Toggle()
+    public static void Toggle(long field, long map)
     {
         if (_active) { Stop("manual"); return; }
         if (Faulted) return;
         if (!ReleaseStopped()) return;
         try {
-            _session = new ResolutionSession(); _session.Initialize(); _active = true;
-            Note = "8x requested"; Experiment.Log?.LogInfo("RESOLUTION ON: " + _session.Summary + "; no pose or pacing changes");
+            _session = new ResolutionSession();
+            if (_session.FieldPointer != field || _session.MapPointer != map) throw new InvalidOperationException("Resolution context differs from active movement context");
+            _session.Initialize(); _active = true;
+            Note = "8x requested"; ResolutionHost.Note("RESOLUTION ON: " + _session.Summary + "; no pose or pacing changes");
         } catch (Exception e) { Stop(e.Message); }
     }
     // Update is outside camera rendering. Restore immediately on a callback
@@ -237,7 +243,7 @@ internal static class Resolution
     {
         if (_active) return false;
         try { _session?.Dispose(); _session = null; return true; }
-        catch (Exception e) { Faulted = true; Note = "CLEANUP FAILED; restart game"; Experiment.Log?.LogError(e); return false; }
+        catch (Exception e) { Faulted = true; Note = "CLEANUP FAILED; restart game"; ResolutionHost.Error(e); return false; }
     }
     public static void Prepare() { if (_active) try { _session!.Prepare(); } catch (Exception e) { Stop(e.Message); } }
     public static void Before(ResolutionPass pass) { if (_active && _session!.Owns(pass)) try { _session.Before(pass); } catch (Exception e) { Stop(e.Message); } }
@@ -251,9 +257,9 @@ internal static class Resolution
             bool hadSession = _session != null; _active = false;
             string summary = _session?.Summary ?? "not active";
             _session?.Restore(); Note = reason;
-            if (hadSession || reason != "unrounded stop") Experiment.Log?.LogInfo("RESOLUTION OFF: " + reason + "; " + summary);
+            if (hadSession || reason != "unrounded stop") ResolutionHost.Note("RESOLUTION OFF: " + reason + "; " + summary);
             return true;
-        } catch (Exception e) { Faulted = true; Note = "RESTORE FAILED; restart game"; Experiment.Log?.LogError(e); return false; }
+        } catch (Exception e) { Faulted = true; Note = "RESTORE FAILED; restart game"; ResolutionHost.Error(e); return false; }
         finally { _stopping = false; }
     }
 }

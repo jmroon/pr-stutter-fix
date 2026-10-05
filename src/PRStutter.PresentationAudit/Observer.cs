@@ -29,6 +29,7 @@ internal static class Observer
     private static bool _unroundedPresent;
     private static PropertyInfo? _unroundedState;
     private static PropertyInfo? _renderScale, _resolutionFrames;
+    private static PropertyInfo? _resolutionFault;
     private static PropertyInfo? _comparisonMode, _carriedTiles;
     private static string _baseline = "waiting for field";
     public static bool Expired => Window.Expired(Stopwatch.GetTimestamp());
@@ -44,6 +45,7 @@ internal static class Observer
         _ticks = _maxTicks = 0; _started = Stopwatch.GetTimestamp();
         _runtimeCurrent = null; _runtimeFlags = null; _runtimePresent = false;
         _unroundedPresent = false; _unroundedState = null; _renderScale = _resolutionFrames = _comparisonMode = _carriedTiles = null;
+        _resolutionFault = null;
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
             if (assembly.GetName().Name == "PRStutter.UnroundedExperiment") {
                 _unroundedPresent = true;
@@ -69,6 +71,16 @@ internal static class Observer
                 if (flags.Count == 4) _runtimeFlags = flags.ToArray();
             }
         }
+        // Prefer the optional add-on's actual texture state over the stock
+        // module's constant scale=1. No execution dependency in either direction.
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
+            if (assembly.GetName().Name != "PRStutter.ResolutionComparison") continue;
+            var type = assembly.GetType("PRStutter.UnroundedExperiment.ResolutionStatus")
+                ?? throw new InvalidOperationException("Unknown resolution comparison status");
+            _renderScale = type.GetProperty("RequestedRenderScale") ?? throw new InvalidOperationException("Missing resolution scale");
+            _resolutionFrames = type.GetProperty("ResolutionCompletedFrames") ?? throw new InvalidOperationException("Missing completed frames");
+            _resolutionFault = type.GetProperty("Faulted") ?? throw new InvalidOperationException("Missing resolution fault state");
+        }
         Window.Start(_started);
     }
     // Four Hz lifecycle coverage continues in menus/loading/battles where the
@@ -82,6 +94,9 @@ internal static class Observer
         try {
             var state = _stock?.Read();
             _lifecycle!.Add(now, new { Qpc = now, Frame = Time.frameCount, Runtime = state,
+                RequestedRenderScale = _renderScale?.GetValue(null) as int? ?? 1,
+                ResolutionCompletedFrames = _resolutionFrames?.GetValue(null) as int? ?? 0,
+                ResolutionFaulted = _resolutionFault?.GetValue(null) as bool? ?? false,
                 Status = state == null ? "stock-status-unavailable" : "observed" });
             _lifecycleCount++;
         } finally {
@@ -140,6 +155,9 @@ internal static class Observer
         var runtime = _stock?.Read();
         string condition = runtime?.Condition(field.Pointer.ToInt64(), model?.Pointer.ToInt64() ?? 0, field.currentAreaId, Time.frameCount) ?? "off";
         string baseline = condition == "off" ? Baseline() : condition;
+        if (_resolutionFault?.GetValue(null) as bool? == true) baseline = "resolution-comparison-fault";
+        else if (_resolutionFault != null && (_renderScale?.GetValue(null) as int? ?? 1) != 1)
+            baseline = "resolution-comparison-8x"; // Explicitly excluded from stock spatial passes.
         _baseline = baseline;
         string scope = baseline is "runtime-absent" or "corrections-disabled" or "unrounded-movement" or "unrounded-movement-8x" or "timing-pacing" or "timing-pacing-unrounded-stock" or "timing-pacing-unrounded-8x" or "stock-manual" or "stock-scripted" or "stock-precision-only" ? "" : baseline;
         if (follow == null || map == null || model == null || target == null || camera == null || field.player == null) {
@@ -240,7 +258,7 @@ internal static class Observer
         var rows = _rows!.Snapshot(0); long overwritten = _rows.Overwritten; _rows = null;
         var lifecycle = _lifecycle!.Snapshot(0); long lifecycleOverwritten = _lifecycle.Overwritten; _lifecycle = null;
         Writer.TrySave(new {
-            SchemaVersion = 1, Kind = "presentation-adapter-audit", Game = Plugin.Game, Version = "0.2.0",
+            SchemaVersion = 1, Kind = "presentation-adapter-audit", Game = Plugin.Game, Version = "0.2.1",
             QpcFrequency = Stopwatch.Frequency, StartedQpc = _started, SavedQpc = Stopwatch.GetTimestamp(), Reason = reason,
             Phase = "FieldController.UpdateVisualInstancePosition.postfix", Samples = rows,
             Lifecycle = lifecycle,

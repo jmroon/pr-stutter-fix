@@ -13,6 +13,10 @@ Install both supported profiles with `scripts/Deploy-ComparisonExperiment.ps1`.
 [Rollback checkpoints and retained findings](docs/offshoot-checkpoint.md).
 The older automatic runtime described below remains experimental.
 
+An optional, removable **165 Hz resolution comparison** now provides **Alt+F11:
+A stock / B 8x** with CRT off. It leaves the stock movement/timing/pacing DLLs
+unchanged. See the [A/B procedure](docs/stock-movement-mode.md#temporary-165-hz-resolution-comparison).
+
 Experimental Windows modding project investigating movement judder in **Final
 Fantasy VI Pixel Remaster**. The current development build automatically manages
 three independent corrections: preserving unused tile-movement time, rendering
