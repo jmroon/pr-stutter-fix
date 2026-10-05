@@ -21,8 +21,10 @@ def summarize(data):
     experiment_samples = 0
     by_condition = defaultdict(lambda: {k: Counter() for k in checks})
     fractional = defaultdict(Counter)
-    comparable = ('runtime-absent', 'corrections-disabled', 'unrounded-movement', 'unrounded-movement-8x')
+    comparable = ('runtime-absent', 'corrections-disabled', 'unrounded-movement', 'unrounded-movement-8x', 'timing-pacing', 'timing-pacing-unrounded-8x')
     resolution_frames = {}
+    carried_deltas = Counter()
+    previous_carry = None
 
     def check(kind, value, sample, entity=None):
         status = value.get('Status', 'missing-check')
@@ -57,12 +59,21 @@ def summarize(data):
         rows[s['Status']] += 1
         baselines[s['Baseline']] += 1
         if s['Status'] != 'sample':
+            previous_carry = None
             previous = None
             previous_entities.clear()
             continue
         clean = s['Baseline'] in comparable
         clean_samples += s['Baseline'] in ('runtime-absent', 'corrections-disabled')
-        experiment_samples += s['Baseline'] in ('unrounded-movement', 'unrounded-movement-8x')
+        experiment_samples += s['Baseline'] in ('unrounded-movement', 'unrounded-movement-8x', 'timing-pacing', 'timing-pacing-unrounded-8x')
+        carried = s.get('CarriedTiles')
+        if isinstance(carried, int) and carried >= 0:
+            if (previous_carry and previous_carry[0] == s['Baseline'] and carried >= previous_carry[1]
+                    and 0 < s['Qpc'] - previous_carry[2] <= data['QpcFrequency'] / 5):
+                carried_deltas[s['Baseline']] += carried - previous_carry[1]
+            previous_carry = (s['Baseline'], carried, s['Qpc']) if clean else None
+        else:
+            previous_carry = None
         frames = s.get('ResolutionCompletedFrames')
         if isinstance(frames, int) and frames >= 0:
             resolution_frames[s['Baseline']] = max(resolution_frames.get(s['Baseline'], 0), frames)
@@ -113,6 +124,7 @@ def summarize(data):
     overhead = data.get('Overhead', {})
     count = overhead.get('SampleCount', 0)
     return dict(game=data['Game'], reason=data['Reason'], phase=data['Phase'], samples=dict(rows),
+                timing_carried_tiles_observed=dict(carried_deltas),
                 clean_samples=clean_samples, experiment_samples=experiment_samples, baselines=dict(baselines),
                 outcome='disagreements-found' if failed else 'observed-checks-match' if compared else 'no-clean-comparisons',
                 checks={k: dict(v) for k, v in checks.items()},
@@ -124,7 +136,7 @@ def summarize(data):
                 observed_patterns=dict(patterns), examples=examples,
                 observer_mean_ms=overhead.get('TotalTicks', 0)*1000/data['QpcFrequency']/count if count else None,
                 observer_max_ms=overhead.get('MaxTicks', 0)*1000/data['QpcFrequency'],
-                limitations='Sampled XY mapping agreement only; unrounded-movement modes are experiments, not an unmodified baseline. The 8x label describes requested resolution; require completed render frames as execution evidence. Fractional observations do not establish gameplay safety. Unobserved roles/modes are untested; excluded checks are not matches. Camera-step patterns do not identify their cause. No final-pixel, shadow/material, jitter or timing-correction proof.')
+                limitations='Sampled XY mapping agreement only; unrounded and coordinated A/B modes are experiments, not an unmodified baseline. The 8x label describes requested resolution; require completed render frames as execution evidence. Fractional observations do not establish gameplay safety. Unobserved roles/modes are untested; excluded checks are not matches. Camera-step patterns do not identify their cause. Carry deltas count observed corrections within each continuous condition, excluding switches and gaps. No final-pixel, shadow/material or display-jitter proof.')
 
 
 if __name__ == '__main__':

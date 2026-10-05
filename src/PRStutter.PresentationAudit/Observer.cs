@@ -18,13 +18,14 @@ internal static class Observer
     private static RecentBuffer<object>? _rows;
     private static long _started, _ticks, _maxTicks;
     private static int _samples, _cursor;
-    private static string _status = "Presentation audit OFF | Ctrl+F11: record 60s | corrections must be OFF";
+    private static string _status = "Presentation audit OFF | Ctrl+F11: record 60s | F9 OFF; coordinated A/B supported";
     private static PropertyInfo? _runtimeCurrent;
     private static PropertyInfo[]? _runtimeFlags;
     private static bool _runtimePresent;
     private static bool _unroundedPresent;
     private static PropertyInfo? _unroundedState;
     private static PropertyInfo? _renderScale, _resolutionFrames;
+    private static PropertyInfo? _comparisonMode, _carriedTiles;
     private static string _baseline = "waiting for field";
     public static bool Expired => Window.Expired(Stopwatch.GetTimestamp());
     public static string Status => Window.Active ? $"Audit RECORDING {Math.Min(60, (Stopwatch.GetTimestamp() - _started) / Stopwatch.Frequency)} / 60s | {_samples} samples | {_baseline} | Ctrl+F11 stop" : _status + " | " + Writer.Status;
@@ -36,12 +37,14 @@ internal static class Observer
         _baseline = "waiting for field";
         _ticks = _maxTicks = 0; _started = Stopwatch.GetTimestamp();
         _runtimeCurrent = null; _runtimeFlags = null; _runtimePresent = false;
-        _unroundedPresent = false; _unroundedState = null; _renderScale = _resolutionFrames = null;
+        _unroundedPresent = false; _unroundedState = null; _renderScale = _resolutionFrames = _comparisonMode = _carriedTiles = null;
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
             if (assembly.GetName().Name == "PRStutter.UnroundedExperiment") {
                 _unroundedPresent = true;
                 _unroundedState = assembly.GetType("PRStutter.UnroundedExperiment.ExperimentStatus")?.GetProperty("State", BindingFlags.Static | BindingFlags.Public);
                 var status = _unroundedState?.DeclaringType;
+                _comparisonMode = status?.GetProperty("ComparisonMode", BindingFlags.Static | BindingFlags.Public);
+                _carriedTiles = status?.GetProperty("CarriedTiles", BindingFlags.Static | BindingFlags.Public);
                 _renderScale = status?.GetProperty("RequestedRenderScale", BindingFlags.Static | BindingFlags.Public);
                 _resolutionFrames = status?.GetProperty("ResolutionCompletedFrames", BindingFlags.Static | BindingFlags.Public);
             }
@@ -63,6 +66,15 @@ internal static class Observer
     }
     private static string Baseline()
     {
+        // The explicit comparison contract validates actual timing/pacing state,
+        // native patch ownership, render request and disabled old compensation.
+        // CorrectionStatus may be from the previous LateUpdate; do not use that
+        // stale snapshot to admit a coordinated comparison.
+        if (_comparisonMode != null) {
+            string? mode = _comparisonMode.GetValue(null) as string;
+            if (mode is "timing-pacing" or "timing-pacing-unrounded-8x") return mode;
+            if (mode != "off") return "comparison-invalid";
+        }
         if (_runtimePresent) {
             if (_runtimeCurrent == null || _runtimeFlags == null) return "runtime-status-unknown";
             var snapshot = _runtimeCurrent.GetValue(null);
@@ -102,7 +114,7 @@ internal static class Observer
         var camera = follow?.camera;
         string baseline = Baseline();
         _baseline = baseline;
-        string scope = baseline is "runtime-absent" or "corrections-disabled" or "unrounded-movement" or "unrounded-movement-8x" ? "" : baseline;
+        string scope = baseline is "runtime-absent" or "corrections-disabled" or "unrounded-movement" or "unrounded-movement-8x" or "timing-pacing" or "timing-pacing-unrounded-8x" ? "" : baseline;
         if (follow == null || map == null || model == null || target == null || camera == null || field.player == null) {
             _rows!.Add(qpc, new { Qpc = qpc, Frame = Time.frameCount, Area = field.currentAreaId, Baseline = baseline, Status = "missing-field-input" });
             _samples++; return;
@@ -173,6 +185,7 @@ internal static class Observer
         }
         _rows!.Add(qpc, new {
             Qpc = qpc, Frame = Time.frameCount, Delta = Time.deltaTime, Controller = field.Pointer.ToInt64(),
+            CarriedTiles = _carriedTiles?.GetValue(null) as int? ?? 0,
             RequestedRenderScale = _renderScale?.GetValue(null) as int? ?? 1,
             ResolutionCompletedFrames = _resolutionFrames?.GetValue(null) as int? ?? 0,
             Area = field.currentAreaId, View = (int)field.MapViewType, Baseline = baseline, Status = "sample",
@@ -198,7 +211,7 @@ internal static class Observer
         Window.Stop();
         var rows = _rows!.Snapshot(0); long overwritten = _rows.Overwritten; _rows = null;
         Writer.TrySave(new {
-            SchemaVersion = 1, Kind = "presentation-adapter-audit", Game = Plugin.Game, Version = "0.1.2",
+            SchemaVersion = 1, Kind = "presentation-adapter-audit", Game = Plugin.Game, Version = "0.1.3",
             QpcFrequency = Stopwatch.Frequency, StartedQpc = _started, SavedQpc = Stopwatch.GetTimestamp(), Reason = reason,
             Phase = "FieldController.UpdateVisualInstancePosition.postfix", Samples = rows,
             Overhead = new { SampleCount = _samples, TotalTicks = _ticks, MaxTicks = _maxTicks, Overwritten = overwritten },

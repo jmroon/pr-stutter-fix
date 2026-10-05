@@ -8,6 +8,26 @@ spec.loader.exec_module(audit)
 
 
 class AuditAnalysisTests(unittest.TestCase):
+    def test_comparison_counts_carries_without_crossing_switches_or_gaps(self):
+        d = self.fixture()
+        rows = []
+        for qpc, mode, count in [(0, 'timing-pacing', 0), (50, 'timing-pacing', 2),
+                                 (100, 'timing-pacing-unrounded-8x', 4),
+                                 (150, 'timing-pacing-unrounded-8x', 7),
+                                 (900, 'timing-pacing-unrounded-8x', 20),
+                                 (950, 'comparison-invalid', 22)]:
+            s = self.sample(qpc, baseline=mode)
+            s['CarriedTiles'] = count
+            rows.append(s)
+        d['Samples'] = rows
+        result = audit.summarize(d)
+        self.assertEqual(result['clean_samples'], 0)
+        self.assertEqual(result['experiment_samples'], 5)
+        self.assertEqual(result['timing_carried_tiles_observed'],
+                         {'timing-pacing': 2, 'timing-pacing-unrounded-8x': 3})
+        self.assertEqual(result['checks_by_condition']['comparison-invalid']['camera'],
+                         {'baseline-excluded': 1})
+
     def test_resolution_mode_is_separate_and_reports_actual_completed_frames(self):
         d=self.fixture();a=self.sample(baseline='unrounded-movement');b=self.sample(50,baseline='unrounded-movement-8x')
         b['ResolutionCompletedFrames']=0
