@@ -12,6 +12,7 @@ static Walk Moving(float start, float timer, int sign = 1, bool vertical = false
     float pos = CarryPolicy.Rounded(start, dest, timer, .2f);
     return vertical ? new Walk(0,start,0,dest,timer,.2f,0,pos) : new Walk(start,0,dest,0,timer,.2f,pos,0);
 }
+SceneFeatureChecks.Run();
 ComparisonChecks.Run();
 int simulated = 0;
 // Compare integrated continuous distance with elapsed time, including jitter and many

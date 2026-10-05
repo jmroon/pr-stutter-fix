@@ -11,6 +11,8 @@ public static class ExperimentControls
     private static int _suppressedFrame = -1;
     internal static bool SuppressKeys => Coordinated || _suppressedFrame == Time.frameCount;
     public static void SetCoordinated(bool value) { Coordinated = value; _suppressedFrame = Time.frameCount; }
+    public static bool PacingCleanupComplete => PacingTest.CleanupComplete;
+    public static void StartFieldPacing(long deadline, System.Func<bool> eligible) => PacingTest.StartField(deadline, eligible);
     public static bool PacingActive => PacingTest.Active;
     public static bool SmoothingActive => Test.Active;
     public static double PacingRemaining => PacingTest.Remaining;

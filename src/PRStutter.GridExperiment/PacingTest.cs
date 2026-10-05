@@ -18,7 +18,9 @@ internal static class PacingTest
     private static readonly List<FieldPlayerController> Controllers = new();
     private static FieldPlayer? _player;
     private static CameraFollowing? _following;
-    private static bool _active;
+    private static bool _active, _managedField, _restoreFaulted;
+    private static Func<bool>? _fieldEligible;
+    public static bool CleanupComplete => !Vsync.Pending && !_active;
     private static long _deadline, _lastReport;
     private static int _target, _frames;
     public static bool Active => _active;
@@ -27,10 +29,11 @@ internal static class PacingTest
 
     public static void Tick()
     {
-        if (!_active) Vsync.Restore(); // Retry a failed restoration before another test.
+        if (!_active && !_restoreFaulted) Vsync.Restore(); // Retry a failed restoration before another test.
         if (_active) {
-            if (!Valid() || QualitySettings.vSyncCount != 1 || Application.targetFrameRate != _target)
-                Stop("control_or_settings_changed");
+            if (QualitySettings.vSyncCount != 1 || Application.targetFrameRate != _target)
+                Stop("settings_changed");
+            else if (!Valid()) Stop(_managedField ? "context_changed" : "control_or_settings_changed");
             else if (Stopwatch.GetTimestamp() >= _deadline)
                 Stop("timeout");
         }
@@ -47,10 +50,14 @@ internal static class PacingTest
         }
     }
 
-    public static void Start(long deadline = 0)
+    public static void Start(long deadline = 0) => StartCore(deadline, null);
+    public static void StartField(long deadline, Func<bool> eligible) => StartCore(deadline, eligible);
+    private static void StartCore(long deadline, Func<bool>? eligible)
     {
-        if (_active) throw new InvalidOperationException("Pacing is already active.");
+        if (_active || Vsync.Pending) throw new InvalidOperationException("Previous pacing override is still owned.");
+        _managedField = eligible != null; _fieldEligible = eligible; _restoreFaulted = false;
         Controllers.Clear(); _following = null; _player = null;
+        if (!_managedField) {
         foreach (var f in UnityEngine.Object.FindObjectsOfType<CameraFollowing>()) {
             if (f.TargetEntity == null || f.camera == null || !f.camera.isActiveAndEnabled) continue;
             if (_following != null) throw new InvalidOperationException("Multiple pacing-test follow targets.");
@@ -59,7 +66,8 @@ internal static class PacingTest
         _player = _following?.TargetEntity.TryCast<FieldPlayer>();
         foreach (var c in UnityEngine.Object.FindObjectsOfType<FieldPlayerController>())
             if (_player != null && c.fieldPlayer != null && c.fieldPlayer.Pointer == _player.Pointer) Controllers.Add(c);
-        if (!Valid()) throw new InvalidOperationException("Pacing test requires ordinary manual field control.");
+        }
+        if (!Valid()) throw new InvalidOperationException("Pacing requires an eligible context.");
         _target = Application.targetFrameRate;
         int originalVsync = QualitySettings.vSyncCount;
         if (originalVsync != 0 || _target != 60)
@@ -71,7 +79,7 @@ internal static class PacingTest
         Test.Note($"PACE ON mode=vsync-display ({Remaining:F1}s): vSyncCount=0->1; targetFrameRate=60 retained. Coordinated={ExperimentControls.Coordinated}.");
     }
 
-    private static bool Valid() => Application.isFocused && Time.timeScale == 1 &&
+    private static bool Valid() => _managedField ? Application.isFocused && Time.timeScale == 1 && _fieldEligible?.Invoke() == true : Application.isFocused && Time.timeScale == 1 &&
         _player != null && _following != null && _following.TargetEntity != null &&
         _following.TargetEntity.Pointer == _player.Pointer && _following.camera != null && _following.camera.isActiveAndEnabled &&
         _player.gameObject.activeInHierarchy && (int)_player.moveState == 0 && !_player.IsAutoMoving && !PRStutter.GridExperiment.GameProfile.TransportActive(_player) && !_player.pauseMoving &&
@@ -81,7 +89,9 @@ internal static class PacingTest
     {
         bool wasActive = _active; _active = false;
         if (wasActive) LastStop = reason;
-        Vsync.Restore();
+        try { Vsync.Restore(); _restoreFaulted = false; }
+        catch { _restoreFaulted = true; throw; }
+        finally { Controllers.Clear(); _player = null; _following = null; _fieldEligible = null; _managedField = false; }
         if (wasActive) Test.Note($"PACE OFF ({reason}); targetFrameRate={Application.targetFrameRate} vSyncCount={QualitySettings.vSyncCount}; owned VSync override released.");
         Controllers.Clear(); _player = null; _following = null;
     }
