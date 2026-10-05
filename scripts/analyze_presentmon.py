@@ -72,6 +72,7 @@ def mode_events(log, kind="GRID"):
 def summarize(directory, trim_seconds=1.0):
     directory = Path(directory)
     metadata = json.loads((directory / "capture.json").read_text(encoding="utf-8-sig"))
+    stock_comparison = metadata.get('Condition') == 'stock-movement-refresh-comparison'
     if metadata.get("SchemaVersion") != 1 or metadata.get("QpcFrequency", 0) <= 0:
         raise ValueError("Invalid measurement metadata")
     if trim_seconds < 0:
@@ -120,6 +121,8 @@ def summarize(directory, trim_seconds=1.0):
                 run = index
         if near_transition:
             continue
+        if stock_comparison and mode == 'unmodified-unmarked':
+            mode = 'stock-rendering-component-state-unverified'
         groups[(row["SwapChainAddress"], mode, pace, run)].append((qpc, row))
     output = []
     for (chain, mode, pace, run), frames in sorted(groups.items()):
@@ -150,11 +153,12 @@ def summarize(directory, trim_seconds=1.0):
     if not output:
         raise ValueError("No sufficiently long valid segments remain after trimming")
     return dict(schema_version=1, process_id=metadata["ProcessId"], source_rows=len(rows),
+                requested_condition=metadata.get('Condition'), requested_refresh_hz=metadata.get('RequestedRefreshHz'),
                 rejected_timestamp_rows=rejected, display_column_available="MsBetweenDisplayChange" in columns,
                 trim_seconds=trim_seconds, segments=output,
                 limitations=["ETW presentation timing, not image displacement, optical panel response or proof of perceived judder.",
                              "Long intervals use 1.5x each segment's median; this is not automatically a missed-refresh count.",
-                             "Unmodified-unmarked periods may include standing still; game log has no walking markers.",
+                             "Render labels do not establish timing/precision activity; verify stock state in timing-test.log. Periods may include standing still.",
                              "Swap chains and separate runs are kept separate; NA display data is unavailable, not zero.",
                              "UTC/QPC alignment uses a measured clock anchor; transition margins reduce boundary ambiguity."])
 

@@ -1,6 +1,8 @@
 [CmdletBinding()]
-param([ValidateRange(30, 180)][int]$Seconds = 75, [ValidateRange(0, 30)][int]$DelaySeconds = 10, [switch]$Elevated, [switch]$PacingComparison)
+param([ValidateRange(30, 180)][int]$Seconds = 75, [ValidateRange(0, 30)][int]$DelaySeconds = 10, [switch]$Elevated, [switch]$PacingComparison,
+    [ValidateSet(0,120,165)][int]$StockRefresh = 0)
 . "$PSScriptRoot/Environment.ps1"
+if ($StockRefresh -and $PacingComparison) { throw 'Choose stock refresh comparison or historical pacing comparison, not both.' }
 $gameProcesses = @(Get-Process -Name 'FINAL FANTASY VI' -ErrorAction SilentlyContinue)
 if ($gameProcesses.Count -ne 1) { throw 'Launch the game and load the test area first; exactly one game process is required.' }
 $directory = Join-Path $projectRoot ('artifacts/measurements/' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss-fff'))
@@ -34,6 +36,14 @@ try {
 }
 if ($PacingComparison) {
     $metadata.Protocol = 'CRT off, all tests initially off. Return after UAC and keep focused. Walk stock 15s, F7 then walk 15s, F9 then walk 20s, F10 then walk 20s, then F7 off. F7 bypasses the software cap using VSync for up to 90s; F9/F10 expire after 15s. Avoid menus and scene changes. Log events distinguish both pacing and grid modes.'
+}
+if ($StockRefresh) {
+    $metadata.Condition = 'stock-movement-refresh-comparison'
+    $metadata.RequestedRefreshHz = $StockRefresh
+    $metadata.TimingLogPath = Join-Path (Split-Path $metadata.GridLogPath) 'timing/timing-test.log'
+    $metadata.MotionDirectory = Split-Path $metadata.GridLogPath
+    $metadata.Protocol = 'Keep current stock smooth movement enabled and all other settings unchanged. Return to the same loaded field after launch; wait 10 seconds, walk the same route, press F8 once for 15 seconds of per-frame motion, then continue walking. No Ctrl+F11, F9/F10, menus, map changes or alt-tab during the run. Repeat separately at 120 and 165 Hz. Requested refresh is a label, not verification of actual display mode.'
+    $metadata.Limitation = 'ETW measures presentation timing, F8 samples LateUpdate motion. Neither measures final pixel displacement or physical panel response. Check component activity in timing-test.log and compare F8-active with F8-inactive intervals for observer overhead.'
 }
 $metadata | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $metadataPath -Encoding utf8
 try {

@@ -12,6 +12,17 @@ spec.loader.exec_module(analyzer)
 
 
 class PresentationTests(unittest.TestCase):
+    def test_stock_refresh_label_is_not_an_unmodified_baseline(self):
+        directory = self.fixture()
+        path = directory / 'capture.json'
+        metadata = json.loads(path.read_text())
+        metadata.update(Condition='stock-movement-refresh-comparison', RequestedRefreshHz=165)
+        path.write_text(json.dumps(metadata))
+        report = analyzer.summarize(directory, .1)
+        self.assertEqual(report['requested_refresh_hz'], 165)
+        self.assertEqual(report['segments'][0]['mode'], 'stock-rendering-component-state-unverified')
+        self.assertAlmostEqual(report['segments'][0]['display_intervals']['rate_from_mean_hz'], 60, places=3)
+
     def fixture(self, display="16.666667", spike=False, second_chain=False):
         temporary = tempfile.TemporaryDirectory(dir=ROOT / "artifacts/tests")
         self.addCleanup(temporary.cleanup)
