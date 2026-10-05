@@ -21,6 +21,16 @@ foreach (var rejected in new[] { gate with { Enabled=false }, gate with { Precis
     Check(!rejected.Eligible(11),"Ineligible comparison accepted");
 Check(!gate.SameContext(gate with { Generation=2 }) && !gate.SameContext(gate with { Map=201 }) &&
     !gate.SameContext(gate with { Field=101 }) && !gate.SameContext(gate with { Identity="map2" }),"Context replacement accepted");
+var readiness = new ResolutionReadiness<string>();
+Check(!readiness.ShouldStart("a",true,0,1) && !readiness.ShouldStart("a",true,.1,2),"Started before stable interval");
+Check(!readiness.ShouldStart("a",true,.3,1),"Same-frame observation armed rendering");
+Check(readiness.ShouldStart("a",true,.3,3),"Stable eligible scene did not start");
+for(int i=0;i<1000;i++) Check(!readiness.ShouldStart("a",true,i+1,i+4),"Failed start retried without context change");
+Check(!readiness.ShouldStart("b",true,2000,2000) && readiness.ShouldStart("b",true,2000.3,2001),"New context did not rearm");
+Check(!readiness.ShouldStart("b",false,2001,2002),"Unsupported scene started");
+Check(!readiness.ShouldStart("b",true,2002,2003) && readiness.ShouldStart("b",true,2002.3,2004),"Scene/focus/CRT return did not rearm");
+Check(!readiness.ShouldStart("b:revision2",true,2003,2005) && readiness.ShouldStart("b:revision2",true,2003.3,2006),"Explicit retry did not rearm");
+Console.WriteLine("PASS: stable eligibility, one attempt per context, retry and scene/focus/effect reacquisition.");
 using var stream=File.OpenRead(args[0]);using var pe=new PEReader(stream);var reader=pe.GetMetadataReader();
 foreach(var h in reader.AssemblyReferences) {
     string name=reader.GetString(reader.GetAssemblyReference(h).Name);

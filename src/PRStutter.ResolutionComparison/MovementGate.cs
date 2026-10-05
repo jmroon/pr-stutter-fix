@@ -1,5 +1,9 @@
 namespace PRStutter.UnroundedExperiment;
 
+// Value identity avoids building/logging context strings every render frame.
+internal readonly record struct RenderContext(string Identity, int Generation, long Field, long Map,
+    int Scale, int Revision, int Width, int Height, long Material, float MainBias, float OverlayBias);
+
 internal readonly record struct MovementGate(bool Enabled, bool Precision, bool Timing, bool Pacing,
     bool Faulted, string Kind, string Identity, int Generation, long Field, long Map, int ContextFrame)
 {
