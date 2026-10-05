@@ -5,13 +5,13 @@
     <GameDirectory Condition="'$(GameDirectory)' == ''">D:\SteamLibrary\steamapps\common\FINAL FANTASY VI PR</GameDirectory>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../PRStutter.RenderExperiment/ScopedOverride.cs" Link="ScopedOverride.cs" />
-    <Compile Include="../PRStutter.GridExperiment/FieldLayoutPolicy.cs" Link="FieldLayoutPolicy.cs" />
-    <Compile Include="../PRStutter.GridExperiment/RenderFrameGate.cs" Link="RenderFrameGate.cs" />
+    <!-- The 8x comparison remains in source/history but is absent from this build. -->
+    <Compile Remove="ResolutionSession.cs;ResolutionFrame.cs" />
     <Reference Include="Assembly-CSharp" HintPath="$(GameDirectory)/BepInEx/interop/Assembly-CSharp.dll" Private="false" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(GameDirectory)/BepInEx/interop/UnityEngine.CoreModule.dll" Private="false" />
     <Reference Include="UnityEngine.InputLegacyModule" HintPath="$(GameDirectory)/BepInEx/interop/UnityEngine.InputLegacyModule.dll" Private="false" />
     <Reference Include="UnityEngine.IMGUIModule" HintPath="$(GameDirectory)/BepInEx/interop/UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="UnityEngine.TextRenderingModule" HintPath="$(GameDirectory)/BepInEx/interop/UnityEngine.TextRenderingModule.dll" Private="false" />
     <Reference Include="Il2Cppmscorlib" HintPath="$(GameDirectory)/BepInEx/interop/Il2Cppmscorlib.dll" Private="false" />
     <Reference Include="Il2CppInterop.Runtime" HintPath="$(GameDirectory)/BepInEx/core/Il2CppInterop.Runtime.dll" Private="false" />
     <Reference Include="BepInEx.Core" HintPath="$(GameDirectory)/BepInEx/core/BepInEx.Core.dll" Private="false" />

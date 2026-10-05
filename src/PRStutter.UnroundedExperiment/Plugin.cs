@@ -5,7 +5,6 @@ using System.Security.Cryptography;
 using BepInEx;
 using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
-using Il2CppInterop.Runtime.Injection;
 using UnityEngine;
 
 namespace PRStutter.UnroundedExperiment;
@@ -16,11 +15,11 @@ public static class ExperimentStatus
     public static string State => Experiment.State;
     public static string ComparisonMode => Experiment.ComparisonMode;
     public static int CarriedTiles => RuntimeBridge.Carried;
-    public static int RequestedRenderScale => Resolution.RequestedScale;
-    public static int ResolutionCompletedFrames => Resolution.CompletedFrames;
+    public static int RequestedRenderScale => 1;
+    public static int ResolutionCompletedFrames => 0;
 }
 
-[BepInPlugin("local.prstutter.unrounded", "PR Stutter Unrounded Movement Test", "0.3.1")]
+[BepInPlugin("local.prstutter.unrounded", "PR Stutter Stock Movement", "0.4.0")]
 public sealed class Plugin : BasePlugin
 {
     private Driver? _driver;
@@ -28,14 +27,13 @@ public sealed class Plugin : BasePlugin
     {
         Experiment.Log = Log;
         try {
-            Experiment.Initialize(); ClassInjector.RegisterTypeInIl2Cpp<ResolutionPass>(); _driver = AddComponent<Driver>();
-            Log.LogInfo($"{Experiment.Game} resolution comparison 0.3.1 ready, OFF. Shift+F11 starts A/stops; Alt+F11 switches A/B; Ctrl+F11 records. Timing+pacing+unrounded stay ON in both. A=stock resolution; B=8x. CRT OFF. Old compensation OFF in both.");
+            Experiment.Initialize(); _driver = AddComponent<Driver>();
+            Log.LogInfo($"{Experiment.Game} stock movement 0.4.0 ready, OFF. Smooth walking button or Shift+F11 toggles; Ctrl+F11 records. Timing+pacing+unrounded; native rendering, no timeout. Control changes still stop this preview; no automatic restart.");
         } catch (Exception e) { Experiment.Fault(e); }
     }
     public override bool Unload()
     {
         if (!Experiment.Stop("unload")) return false;
-        if (!Resolution.ReleaseStopped()) return false;
         if (_driver != null) UnityEngine.Object.Destroy(_driver);
         return true;
     }
@@ -54,16 +52,17 @@ internal static class Experiment
 #endif
     public static ManualLogSource? Log;
     private static PatchSet? _patches;
-    private static bool _fault, _running, _modeB;
-    private static long _deadline;
+    private static bool _fault, _running, _toggleRequested;
     private static string _note = "starting";
-    public static string State => _fault || Resolution.Faulted || _patches?.Faulted == true ? "fault" : _patches?.Enabled == true ? "on" : "off";
-    public static string ComparisonMode => !_running ? "off" : State == "fault" || !RuntimeBridge.Healthy ? "comparison-invalid" :
-        _modeB && _patches?.Enabled == true && Resolution.RequestedScale == 8 && RuntimeBridge.Unrounded ? "timing-pacing-unrounded-8x" :
-        !_modeB && _patches?.Enabled == true && Resolution.RequestedScale == 1 && RuntimeBridge.Unrounded ? "timing-pacing-unrounded-stock" : "comparison-invalid";
+    public static bool Running => _running;
+    public static string State => _fault || _patches?.Faulted == true ? "fault" : _patches?.Enabled == true ? "on" : "off";
+    public static string ComparisonMode => !_running ? "off" : State == "fault" || !RuntimeBridge.Healthy ||
+        _patches?.Enabled != true || !RuntimeBridge.Unrounded ? "comparison-invalid" : "timing-pacing-unrounded-stock";
     public static string Label => _running ?
-        $"RESOLUTION {(_modeB ? "B: 8x (2560x1440)" : "A: STOCK (320x180)")} | timing + pacing + unrounded ON | carried {RuntimeBridge.Carried} | {Math.Max(0, (_deadline - Stopwatch.GetTimestamp()) / Stopwatch.Frequency)}s\nShift+F11 STOP | Alt+F11 A/B | Ctrl+F11 record | compensation OFF" :
-        "COMPARISON OFF | Shift+F11 starts A | " + _note;
+        "SMOOTH WALKING ON | native resolution\n" + RuntimeBridge.Status :
+        "SMOOTH WALKING " + (State == "fault" ? "FAULT" : "OFF") + "\n" + _note;
+    // Unity GUI events only queue work; native patches change during Update.
+    public static void RequestToggle() => _toggleRequested = true;
     public static void Initialize()
     {
         if (!Environment.Is64BitProcess) throw new NotSupportedException("x64 required");
@@ -86,55 +85,37 @@ internal static class Experiment
     public static void Tick()
     {
         try {
-            Resolution.Recover();
-            if (Resolution.Faulted && !_fault) { Fault(new InvalidOperationException("Resolution cleanup failed; restart game")); return; }
-            if (_running && (ComparisonMode == "comparison-invalid" || Stopwatch.GetTimestamp() >= _deadline)) {
-                Stop("component stopped or timeout: " + RuntimeBridge.Status + "; resolution=" + Resolution.Note); return;
+            if (_running && ComparisonMode == "comparison-invalid") {
+                Stop("component stopped: " + RuntimeBridge.Status); return;
             }
             bool control = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
             bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
             bool alt = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
-            if (!Input.GetKeyDown(KeyCode.F11) || control) return;
-            if (alt && !shift && _running) { Switch(); return; }
-            if (!shift || alt) return;
+            bool toggle = _toggleRequested || (Input.GetKeyDown(KeyCode.F11) && shift && !control && !alt);
+            _toggleRequested = false;
+            if (!toggle) return;
             if (_running) { Stop("manual"); return; }
             if (State == "fault" || _patches == null) return;
-            _deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
             try {
-                RuntimeBridge.Start(_deadline);
+                RuntimeBridge.Start(long.MaxValue);
                 _patches.Set(true); RuntimeBridge.SetUnrounded(true);
-                _running = true; _modeB = false;
-                Log?.LogInfo("COMPARISON A: " + RuntimeBridge.Status + "; unrounded movement, stock resolution; 120s.");
+                _running = true;
+                Log?.LogInfo("STOCK MOVEMENT ON: " + RuntimeBridge.Status + "; unrounded movement, native resolution; no timeout.");
             } catch (Exception e) { Stop("start refused: " + e.Message); }
         } catch (Exception e) { Fault(e); }
-    }
-    private static void Switch()
-    {
-        if (!RuntimeBridge.Healthy) { Stop("timing/pacing unavailable"); return; }
-        if (_modeB) {
-            if (!Resolution.Stop("comparison A")) throw new InvalidOperationException("Resolution restoration failed");
-            _modeB = false;
-        } else {
-            Resolution.Toggle();
-            if (Resolution.RequestedScale != 8) { Stop("B refused: " + Resolution.Note); return; }
-            _modeB = true;
-        }
-        Log?.LogInfo("COMPARISON " + (_modeB ? "B" : "A") + ": " + RuntimeBridge.Status + "; " + ComparisonMode);
     }
     public static bool Stop(string reason)
     {
         bool wasRunning = _running || RuntimeBridge.Active;
-        _running = false; _modeB = false;
+        _running = false; _toggleRequested = false;
         bool ok = true;
-        // Independent cleanup attempts: a texture restore failure must not leave
-        // timing, pacing or native call patches running.
-        try { if (!Resolution.Stop("unrounded stop")) ok = false; } catch (Exception e) { ok = false; Log?.LogError(e); }
+        // A native restore failure must not block timing/pacing cleanup.
         try { _patches?.Restore(); } catch (Exception e) { ok = false; Log?.LogError(e); }
         try { RuntimeBridge.Stop(reason); } catch (Exception e) { ok = false; Log?.LogError(e); }
         if (_patches?.HasOwnedSites == true || RuntimeBridge.Active) ok = false;
         _fault |= !ok;
         _note = ok ? reason : "RESTORE FAILED; restart game";
-        if (wasRunning || !ok) Log?.LogInfo("COMPARISON OFF: " + _note);
+        if (wasRunning || !ok) Log?.LogInfo("STOCK MOVEMENT OFF: " + _note);
         return ok;
     }
     public static void Fault(Exception e) { _fault = true; Stop("fault"); _note = "FAULT; restart game"; Log?.LogError(e); }
@@ -144,11 +125,44 @@ public sealed class Driver : MonoBehaviour
 {
     public Driver(IntPtr pointer) : base(pointer) { }
     public void Update() => Experiment.Tick();
-    public void LateUpdate() => Resolution.Prepare();
-    public void OnGUI() { try {
-        GUI.Label(new Rect(12, Screen.height - 185, Math.Max(200, Screen.width - 24), 55), Experiment.Label);
-        GUI.Label(new Rect(12, Screen.height - 135, Math.Max(200, Screen.width - 24), 40), Resolution.Label);
-    } catch { } }
+    private GUIStyle? _labelStyle, _buttonStyle;
+    private GUIContent? _content;
+    private long _nextRefresh;
+    private float _labelHeight, _lastWidth;
+    private int _lastFlags = -1, _lastFont;
+    private bool _panelFailed;
+    public void OnGUI()
+    {
+        if (_panelFailed) return;
+        try {
+            _labelStyle ??= new GUIStyle { wordWrap = true, alignment = TextAnchor.UpperLeft };
+            _buttonStyle ??= new GUIStyle { wordWrap = true, alignment = TextAnchor.MiddleCenter };
+            _labelStyle.normal.textColor = _buttonStyle.normal.textColor = Color.white;
+            int font = Math.Clamp(Screen.height / 65, 16, 22);
+            _labelStyle.fontSize = _buttonStyle.fontSize = font;
+            float width = Math.Min(620, Screen.width - 24), x = Screen.width - width - 12;
+            long now = Stopwatch.GetTimestamp();
+            int flags = (Experiment.Running ? 1 : 0) | (Experiment.State == "fault" ? 2 : 0);
+            if (_content == null || now >= _nextRefresh || flags != _lastFlags || width != _lastWidth || font != _lastFont) {
+                _content ??= new GUIContent();
+                _content.text = Experiment.Label;
+                _labelHeight = _labelStyle.CalcHeight(_content, width - 24);
+                _nextRefresh = now + Stopwatch.Frequency / 10;
+                _lastFlags = flags; _lastWidth = width; _lastFont = font;
+            }
+            float buttonY = 24 + _labelHeight;
+            GUI.Box(new Rect(x, 12, width, _labelHeight + font * 3 + 60), "");
+            GUI.Label(new Rect(x + 12, 24, width - 24, _labelHeight), _content, _labelStyle);
+            var button = new Rect(x + 12, buttonY + 8, width - 24, font + 24);
+            if (GUI.Button(button, "")) Experiment.RequestToggle();
+            GUI.Label(button, Experiment.Running ? "Turn smooth walking OFF" : "Enable smooth walking (stock resolution)", _buttonStyle);
+            GUI.Label(new Rect(x + 12, buttonY + font + 40, width - 24, font + 12),
+                "Shift+F11: toggle | Ctrl+F11: record", _labelStyle);
+        } catch (Exception e) {
+            _panelFailed = true;
+            Experiment.Log?.LogWarning("Smooth walking panel unavailable; Shift+F11 still works: " + e.Message);
+        }
+    }
     public void OnApplicationFocus(bool focus) { if (!focus) Experiment.Stop("focus lost"); }
     public void OnApplicationQuit() => Experiment.Stop("quit");
 }

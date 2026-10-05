@@ -47,6 +47,10 @@ internal static class ResolutionChecks
         Check(current=="new-native-target"&&!binding.Pending,"Overwrote native replacement");
 
         using var stream=File.OpenRead(assembly);using var pe=new PEReader(stream);var reader=pe.GetMetadataReader();
+        foreach (var h in reader.TypeDefinitions) {
+            string name = reader.GetString(reader.GetTypeDefinition(h).Name);
+            Check(name is not ("ResolutionPass" or "ResolutionSession" or "ResolutionFrame"), "8x implementation remains compiled into stock mode");
+        }
         foreach(var h in reader.AssemblyReferences) {
             string name=reader.GetString(reader.GetAssemblyReference(h).Name);
             Check(!name.StartsWith("PRStutter."),"Runtime dependency on older compensation module");
@@ -57,12 +61,13 @@ internal static class ResolutionChecks
             string ns=reader.GetString(t.Namespace),type=reader.GetString(t.Name),name=reader.GetString(m.Name);
             Check(type is not ("VisualMotion" or "MotionResidual" or "StabilizationMath"),"Position compensation linked");
             if(ns.StartsWith("UnityEngine")) {
+                Check(type != "RenderTexture", "Render-target code remains in stock build");
                 Check(!(type=="Transform"&&name.StartsWith("set_")),"Transform mutation: "+name);
-                Check(!(type=="Camera"&&name.StartsWith("set_")&&name!="set_targetTexture"),"Camera pose/projection mutation: "+name);
-                Check(name is not ("set_targetFrameRate" or "set_vSyncCount" or "set_timeScale" or "SetFloat" or "SetVector" or "SetMatrix" or "ReadPixels"),"Out-of-scope rendering/pacing mutation: "+name);
+                Check(!(type=="Camera"&&name.StartsWith("set_")),"Camera mutation in stock build: "+name);
+                Check(name is not ("set_targetFrameRate" or "set_vSyncCount" or "set_timeScale" or "SetFloat" or "SetVector" or "SetMatrix" or "ReadPixels" or "SetTexture"),"Out-of-scope rendering/pacing mutation: "+name);
             }
             if(ns.StartsWith("Last.")) Check(!name.StartsWith("set_") && name is not ("MoveTo" or "UpdateEntity" or "UpdateController"),"Game method mutation: "+name);
         }
-        Console.WriteLine("PASS: complete draw order, startup/recovery, ownership cleanup, topology; compiled plugin has no pose/projection/pacing writes or old compensation dependency.");
+        Console.WriteLine("PASS: complete draw order, startup/recovery, ownership cleanup, topology; compiled stock plugin has no RenderTexture references, camera/transform/material/pacing writes or old compensation dependency.");
     }
 }
