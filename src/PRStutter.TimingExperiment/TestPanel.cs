@@ -28,11 +28,12 @@ internal static class TestPanel
     }
     public static void Poll() { }
     public static void Stop(string reason) => AutomaticRuntime.Shutdown(reason);
-    public static void FocusLost() => AutomaticRuntime.Suspend("focus lost");
+    public static void FocusLost() { if (ComparisonControl.Active) ComparisonControl.Suspend("focus lost"); else AutomaticRuntime.Suspend("focus lost"); }
     public static void Fault(Exception e)
     {
         Timing.Note("AUTOMATIC CONTROL FAULT: " + e);
-        AutomaticRuntime.Suspend("controller fault: " + e.Message);
+        if (ComparisonControl.Active) ComparisonControl.Fail("controller fault: " + e.Message);
+        else AutomaticRuntime.Suspend("controller fault: " + e.Message);
     }
     private static string State(bool active, string reason) => active ? "ON" : "SUSPENDED: " + reason;
     public static void Draw()

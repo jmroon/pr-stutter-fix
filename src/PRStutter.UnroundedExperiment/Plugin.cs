@@ -12,6 +12,17 @@ namespace PRStutter.UnroundedExperiment;
 // Read-only reflection contract for the independent audit. Faults never masquerade as OFF.
 public static class ExperimentStatus
 {
+    public static bool Enabled => Experiment.Running;
+    public static bool PrecisionActive => Experiment.State == "on";
+    public static bool TimingActive => RuntimeBridge.TimingActive;
+    public static bool PacingActive => RuntimeBridge.PacingActive;
+    public static bool Faulted => Experiment.State == "fault" || RuntimeBridge.Faulted;
+    public static string ContextKind => RuntimeBridge.ContextKind;
+    public static string ContextIdentity => RuntimeBridge.ContextIdentity;
+    public static string TimingStatus => RuntimeBridge.TimingStatus;
+    public static string PacingStatus => RuntimeBridge.PacingStatus;
+    public static int Generation => RuntimeBridge.Generation;
+    public static int TimingSession => RuntimeBridge.TimingSession;
     public static string State => Experiment.State;
     public static string ComparisonMode => Experiment.ComparisonMode;
     public static int CarriedTiles => RuntimeBridge.Carried;
@@ -19,7 +30,7 @@ public static class ExperimentStatus
     public static int ResolutionCompletedFrames => 0;
 }
 
-[BepInPlugin("local.prstutter.unrounded", "PR Stutter Stock Movement", "0.4.0")]
+[BepInPlugin("local.prstutter.unrounded", "PR Stutter Stock Movement", "0.5.0")]
 public sealed class Plugin : BasePlugin
 {
     private Driver? _driver;
@@ -28,7 +39,7 @@ public sealed class Plugin : BasePlugin
         Experiment.Log = Log;
         try {
             Experiment.Initialize(); _driver = AddComponent<Driver>();
-            Log.LogInfo($"{Experiment.Game} stock movement 0.4.0 ready, OFF. Smooth walking button or Shift+F11 toggles; Ctrl+F11 records. Timing+pacing+unrounded; native rendering, no timeout. Control changes still stop this preview; no automatic restart.");
+            Log.LogInfo($"{Experiment.Game} stock movement 0.5.0 ready, OFF. Smooth walking button or Shift+F11 toggles; Ctrl+F11 records. Timing+pacing+unrounded; native rendering, no timeout. Supported field scripts retain precision/pacing; manual timing suspends and resumes. Unsupported scene families stay native.");
         } catch (Exception e) { Experiment.Fault(e); }
     }
     public override bool Unload()
@@ -56,11 +67,12 @@ internal static class Experiment
     private static string _note = "starting";
     public static bool Running => _running;
     public static string State => _fault || _patches?.Faulted == true ? "fault" : _patches?.Enabled == true ? "on" : "off";
-    public static string ComparisonMode => !_running ? "off" : State == "fault" || !RuntimeBridge.Healthy ||
-        _patches?.Enabled != true || !RuntimeBridge.Unrounded ? "comparison-invalid" : "timing-pacing-unrounded-stock";
+    public static string ComparisonMode => !_running ? "off" : !RuntimeBridge.Healthy || State == "fault" ? "stock-invalid" :
+        _patches?.Enabled != true ? "stock-suspended" : RuntimeBridge.PacingActive ?
+        RuntimeBridge.TimingActive ? "stock-manual" : "stock-scripted" : "stock-precision-only";
     public static string Label => _running ?
-        "SMOOTH WALKING ON | native resolution\n" + RuntimeBridge.Status :
-        "SMOOTH WALKING " + (State == "fault" ? "FAULT" : "OFF") + "\n" + _note;
+        "SMOOTH MOVEMENT ENABLED | precision " + (_patches?.Enabled == true ? "ON" : "suspended") + "\n" + RuntimeBridge.Status :
+        "SMOOTH MOVEMENT " + (State == "fault" ? "FAULT" : "OFF") + "\n" + _note;
     // Unity GUI events only queue work; native patches change during Update.
     public static void RequestToggle() => _toggleRequested = true;
     public static void Initialize()
@@ -85,8 +97,15 @@ internal static class Experiment
     public static void Tick()
     {
         try {
-            if (_running && ComparisonMode == "comparison-invalid") {
-                Stop("component stopped: " + RuntimeBridge.Status); return;
+            if (_running) {
+                RuntimeBridge.Refresh();
+                if (!RuntimeBridge.Healthy) { Fault(new InvalidOperationException(RuntimeBridge.Status)); return; }
+                bool precision = RuntimeBridge.PrecisionAllowed;
+                if (_patches!.Enabled != precision) {
+                    _patches.Set(precision);
+                    Log?.LogInfo("PRECISION " + (precision ? "ON" : "SUSPENDED") + ": " + RuntimeBridge.ContextKind);
+                }
+                RuntimeBridge.SetUnrounded(precision);
             }
             bool control = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
             bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
@@ -98,9 +117,8 @@ internal static class Experiment
             if (State == "fault" || _patches == null) return;
             try {
                 RuntimeBridge.Start(long.MaxValue);
-                _patches.Set(true); RuntimeBridge.SetUnrounded(true);
                 _running = true;
-                Log?.LogInfo("STOCK MOVEMENT ON: " + RuntimeBridge.Status + "; unrounded movement, native resolution; no timeout.");
+                Log?.LogInfo("STOCK MOVEMENT ENABLED: native resolution; waiting for supported context; no timeout.");
             } catch (Exception e) { Stop("start refused: " + e.Message); }
         } catch (Exception e) { Fault(e); }
     }
@@ -117,6 +135,12 @@ internal static class Experiment
         _note = ok ? reason : "RESTORE FAILED; restart game";
         if (wasRunning || !ok) Log?.LogInfo("STOCK MOVEMENT OFF: " + _note);
         return ok;
+    }
+    public static void SuspendForFocus()
+    {
+        if (!_running) return;
+        try { RuntimeBridge.Suspend("focus lost"); _patches?.Restore(); RuntimeBridge.SetUnrounded(false); }
+        catch (Exception e) { Fault(e); }
     }
     public static void Fault(Exception e) { _fault = true; Stop("fault"); _note = "FAULT; restart game"; Log?.LogError(e); }
 }
@@ -155,7 +179,7 @@ public sealed class Driver : MonoBehaviour
             GUI.Label(new Rect(x + 12, 24, width - 24, _labelHeight), _content, _labelStyle);
             var button = new Rect(x + 12, buttonY + 8, width - 24, font + 24);
             if (GUI.Button(button, "")) Experiment.RequestToggle();
-            GUI.Label(button, Experiment.Running ? "Turn smooth walking OFF" : "Enable smooth walking (stock resolution)", _buttonStyle);
+            GUI.Label(button, Experiment.Running ? "Turn smooth movement OFF" : "Enable smooth movement (stock resolution)", _buttonStyle);
             GUI.Label(new Rect(x + 12, buttonY + font + 40, width - 24, font + 12),
                 "Shift+F11: toggle | Ctrl+F11: record", _labelStyle);
         } catch (Exception e) {
@@ -163,6 +187,6 @@ public sealed class Driver : MonoBehaviour
             Experiment.Log?.LogWarning("Smooth walking panel unavailable; Shift+F11 still works: " + e.Message);
         }
     }
-    public void OnApplicationFocus(bool focus) { if (!focus) Experiment.Stop("focus lost"); }
+    public void OnApplicationFocus(bool focus) { if (!focus) Experiment.SuspendForFocus(); }
     public void OnApplicationQuit() => Experiment.Stop("quit");
 }

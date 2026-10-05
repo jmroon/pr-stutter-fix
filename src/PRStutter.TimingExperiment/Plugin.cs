@@ -73,7 +73,10 @@ internal static class Timing
     private static EnumeratorTaskProcess? _arrival;
     private static int _captureFrame = -1, _arrivalFrame = -1, _arrivalCount, _primed;
     private static CameraFollowing? _following;
-    private static IntPtr _parent;
+    private static IntPtr _parent, _mapModel, _mapRenderer;
+    private static int _area;
+    public static int TotalCarried { get; private set; }
+    public static int Session { get; private set; }
     private static bool _active, _hooks, _requesting, _detachFailed;
     private static string? _pendingStop;
     private static int _inputFrame = -1, _lastUpdate = -1, _carried, _attempted;
@@ -106,6 +109,12 @@ internal static class Timing
     {
         if (_hooks) throw new InvalidOperationException("Previous hooks have not been removed.");
         _following = null; _player = null; _controller = null; _field = null; _main = null; _machine = null;
+        if (ComparisonControl.Active) {
+            _controller = FieldContext.AcquireManualController();
+            _field = _controller?.playerHandle?.TryCast<FieldController>();
+            _following = _field?.cameraFollowing;
+            _player = _controller?.fieldPlayer;
+        } else {
         foreach (var f in UnityEngine.Object.FindObjectsOfType<CameraFollowing>()) {
             if (f.TargetEntity == null || f.camera == null || !f.camera.isActiveAndEnabled) continue;
             if (_following != null) throw new InvalidOperationException("Multiple field follow targets.");
@@ -117,10 +126,14 @@ internal static class Timing
             if (_controller != null) throw new InvalidOperationException("Multiple ordinary key controllers.");
             _controller = c;
         }
+        }
         _parent = _player?.transform.parent == null ? IntPtr.Zero : _player.transform.parent.Pointer;
         _field = _controller?.playerHandle?.TryCast<FieldController>();
         _main = _field?.eventHandle?.TryCast<EventProcedure>()?.sceneHandle?.TryCast<MainGame>();
         _machine = _main?.residentMultiTask;
+        _mapModel = _field?.mapManager?.currentMapModel?.Pointer ?? IntPtr.Zero;
+        _mapRenderer = _field?.mainViewMapRenderer?.Pointer ?? IntPtr.Zero;
+        _area = _field?.currentAreaId ?? -1;
         if (!Valid()) throw new InvalidOperationException("Timing test requires an active ordinary manual-walking controller.");
         _inputFrame = _lastUpdate = -1; _axis = Vector2.zero; _carried = _attempted = 0; _totalCarry = 0; _detachFailed = false;
         _pending = null; _cameraFrame = _footFrame = -1; _footAllowsNext = false;
@@ -140,7 +153,7 @@ internal static class Timing
         Patches.Patch(AccessTools.DeclaredMethod(typeof(FootMonitoring), nameof(FootMonitoring.UpdateMoveAction)),
             postfix: new HarmonyMethod(typeof(Timing), nameof(ArrivalCreatedPostfix)));
         _deadline = deadline == 0 ? Stopwatch.GetTimestamp() + Stopwatch.Frequency * 30 : deadline;
-        _active = true; LastStop = "";
+        _active = true; LastStop = ""; Session++;
         Note($"TIMING ON ({Remaining:F1}s). One early arrival step with native approval and collision checks; same-frame carry only. Five hooks. Coordinated={PRStutter.GridExperiment.ExperimentControls.Coordinated}.");
     }
     private static bool Valid() => Application.isFocused && Time.timeScale == 1 && _player != null &&
@@ -152,7 +165,10 @@ internal static class Timing
         _following.camera != null && _following.camera.isActiveAndEnabled &&
         _controller != null && _controller.isActiveAndEnabled && _controller.InputEnable &&
         _controller.fieldPlayer != null && _controller.fieldPlayer.Pointer == _player.Pointer &&
-        _field != null && _field.player != null && _field.player.Pointer == _player.Pointer &&
+        _field != null && _mapModel != IntPtr.Zero && _mapRenderer != IntPtr.Zero &&
+        _field.currentAreaId == _area && _field.mapManager?.currentMapModel?.Pointer == _mapModel &&
+        _field.mainViewMapRenderer?.Pointer == _mapRenderer && (int)_field.MapViewType == 0 &&
+        (!ComparisonControl.Active || FieldContext.SceneIsPlayer()) && _field.player != null && _field.player.Pointer == _player.Pointer &&
         _field.cameraFollowing != null && _field.cameraFollowing.Pointer == _following.Pointer &&
         _controller.playerHandle != null && _controller.playerHandle.Pointer == _field.Pointer &&
         _main != null && _main.isActiveAndEnabled && _machine != null &&
@@ -330,14 +346,14 @@ internal static class Timing
                 if (player.transform.localPosition == advanced) player.transform.localPosition = position;
                 throw;
             }
-            _carried++; _totalCarry += row.Remainder;
+            _carried++; TotalCarried++; _totalCarry += row.Remainder;
             row = row with { Final = Read(player), Applied = row.Remainder, Action = "carried" };
         }
         return row with { Ticks = row.Ticks + Stopwatch.GetTimestamp() - begin };
     }
     private static void RequestStop(string reason) { _active = false; LastStop = reason; _pendingStop ??= reason; }
     public static void Fail(Exception e) { RequestStop("fault: " + e); }
-    public static void FinishPending() { if (_pendingStop is { } reason) Stop(reason); }
+    public static void FinishPending() { if (!_detachFailed && _pendingStop is { } reason) Stop(reason); }
     public static void StopForRuntime(string reason)
     {
         Stop(reason);

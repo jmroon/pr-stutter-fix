@@ -1,5 +1,8 @@
 namespace PRStutter.TimingExperiment;
 
+internal readonly record struct FieldContextSnapshot(string Identity, string TimingIdentity, string Kind,
+    bool Precision, bool Pacing, bool Manual, string Reason);
+
 internal static class SceneEligibility
 {
     // Native state names are shared by inspected FFIV/FFVI enums. No map IDs.

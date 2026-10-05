@@ -48,14 +48,14 @@ internal static class AutomaticRuntime
     }
     public static void Toggle()
     {
-        if (ComparisonControl.Active) { Timing.Note("F9 ignored while A/B comparison owns timing/pacing; Shift+F11 stops it."); return; }
+        if (ComparisonControl.Active) { Timing.Note("F9 ignored while stock movement owns timing/pacing; Shift+F11 stops it."); return; }
         _enabled.Value = !Enabled; _generation++; _nextProbe = 0;
         if (!Enabled) Suspend("disabled by F9");
     }
     public static void Tick()
     {
         if (_shutdown) return;
-        if (ComparisonControl.Active) { Publish(Stopwatch.GetTimestamp(), "coordinated-comparison"); return; }
+        if (ComparisonControl.Active) { Publish(Stopwatch.GetTimestamp(), ComparisonControl.ContextKind + ";generation=" + ComparisonControl.Generation); return; }
         long now = Stopwatch.GetTimestamp();
         if (now < _nextProbe) { Publish(now); return; }
         _nextProbe = now + Stopwatch.Frequency / 2;
@@ -103,7 +103,8 @@ internal static class AutomaticRuntime
     {
         var s = new CorrectionSnapshot(now, context ?? CorrectionStatus.Current.Context ?? "waiting", Enabled,
             TimingFeature.Active, PacingFeature.Active, SmoothingFeature.Active,
-            TimingFeature.Status, PacingFeature.Status, SmoothingFeature.Status);
+            ComparisonControl.Active ? ComparisonControl.TimingStatus : TimingFeature.Status,
+            ComparisonControl.Active ? ComparisonControl.PacingStatus : PacingFeature.Status, SmoothingFeature.Status);
         CorrectionStatus.Current = s;
         var comparable = s with { Qpc = 0 };
         if (comparable == _lastPublished) return;

@@ -8,17 +8,20 @@ using UnityEngine;
 
 namespace PRStutter.TimingExperiment;
 
-internal readonly record struct FieldContextSnapshot(string Identity, string TimingIdentity, string Kind,
-    bool Precision, bool Pacing, bool Manual, string Reason);
-
 // Control-plane observation, not a diagnostic dependency. One void postfix
 // records the field that actually updated; no scene scan or gameplay mutation.
 internal static class FieldContext
 {
     private static readonly Harmony Hooks = new("local.prstutter.fieldcontext");
     private static FieldController? _field;
+    private static FieldPlayerKeyController? _manualController;
     private static int _frame = -10;
     private static bool _multiple, _installed;
+    public static int Frame => _frame;
+    public static void Clear() { _field = null; _manualController = null; _frame = -10; _multiple = false; }
+    public static FieldPlayerKeyController? AcquireManualController() => Read().Manual ? _manualController : null;
+    public static bool SceneIsPlayer() => Last.Management.SceneManager.Instance?.GetCurrentSubSceneManager()
+        ?.TryCast<SubSceneManagerMainGame>()?.GetCurrentState() == SubSceneManagerMainGame.State.Player;
     public static void Attach()
     {
         if (_installed) throw new InvalidOperationException("Field context hook already owned");
@@ -29,7 +32,7 @@ internal static class FieldContext
     public static void Detach()
     {
         if (_installed) { Hooks.UnpatchSelf(); _installed = false; }
-        _field = null; _frame = -10; _multiple = false;
+        Clear();
     }
     public static void AfterField(FieldController __instance)
     {
@@ -40,6 +43,7 @@ internal static class FieldContext
     }
     public static FieldContextSnapshot Read()
     {
+        _manualController = null;
         FieldContextSnapshot No(string kind, string reason) => new(kind, kind, kind, false, false, false, reason);
         if (!Application.isFocused) return No("unfocused", "application unfocused");
         if (Time.timeScale != 1) return No("paused", "time scale changed");
@@ -81,6 +85,7 @@ internal static class FieldContext
             main.residentMultiTask.Type == TaskRunType.DynamicParallel;
         string timingIdentity = $"{identity}:{player?.Pointer}:{controller?.Pointer}:{follow?.Pointer}:{main.residentMultiTask?.Pointer}";
         string kind = manual ? "field-manual" : state == "Player" ? "field-scripted-control" : "field-" + state.ToLowerInvariant();
+        if (manual) _manualController = controller;
         return new(identity, timingIdentity, kind, true, pacing, manual,
             manual ? "manual field control" : "scripted field control; manual timing suspended");
     }
