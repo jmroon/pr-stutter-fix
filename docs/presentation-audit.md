@@ -1,6 +1,6 @@
 # Read-only presentation adapter audit
 
-Version 0.1.1 is an independent diagnostic plugin for the inspected FFIV and
+Version 0.1.2 is an independent diagnostic plugin for the inspected FFIV and
 FFVI builds. It does not replace or extend the correction runtime. The purpose
 is to check whether shared native position equations explain field rendering
 before implementing a new correction.
@@ -75,6 +75,11 @@ Test-on samples are explicitly labeled `unrounded-movement`; their mapping check
 remain evaluable, but the analyzer separates their counts from baseline samples.
 Unknown/faulted experiment state is excluded. Fractional logical observations are
 reported by condition and entity role. See [the test guide](unrounded-movement-test.md).
+
+Version 0.1.2 distinguishes the optional `unrounded-movement-8x` request and
+records `RequestedRenderScale` and `ResolutionCompletedFrames`. A request with
+zero completed draws is not evidence that the higher-resolution path rendered.
+These counters describe rendering callbacks, not delivered pixels or frame pacing.
 
 ## Predictions and raw evidence
 

@@ -48,7 +48,7 @@ foreach ($path in @($dll,$timing,$debug)) {
     $entries += [ordered]@{Path=$path; Previous=$exists; Backup=$saved; PreviousHash=$(if($exists){(Get-FileHash -LiteralPath $path).Hash}else{$null}); InstalledHash=$null}
 }
 $manifest = Join-Path $backup 'manifest.json'
-$deployment = [ordered]@{Game=$Game; Version='0.1.1'; GitCommit=(git -C $auditRoot rev-parse HEAD); Files=$entries; Complete=$false; RuntimeVerified=$false}
+$deployment = [ordered]@{Game=$Game; Version='0.1.2'; GitCommit=(git -C $auditRoot rev-parse HEAD); Files=$entries; Complete=$false; RuntimeVerified=$false}
 $deployment | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifest
 foreach ($path in @($dll,$timing,$debug)) {
     if (Get-Process -Name $auditProfile.Process -ErrorAction SilentlyContinue) { throw "Game started; installation incomplete. Backups: $backup" }

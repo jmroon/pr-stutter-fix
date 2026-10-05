@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace PRStutter.PresentationAudit;
 
-[BepInPlugin("local.prstutter.presentationaudit", "PR Stutter Presentation Audit", "0.1.1")]
+[BepInPlugin("local.prstutter.presentationaudit", "PR Stutter Presentation Audit", "0.1.2")]
 public sealed class Plugin : BasePlugin
 {
     private Harmony? _harmony;

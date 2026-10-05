@@ -8,6 +8,16 @@ spec.loader.exec_module(audit)
 
 
 class AuditAnalysisTests(unittest.TestCase):
+    def test_resolution_mode_is_separate_and_reports_actual_completed_frames(self):
+        d=self.fixture();a=self.sample(baseline='unrounded-movement');b=self.sample(50,baseline='unrounded-movement-8x')
+        b['ResolutionCompletedFrames']=0
+        c=self.sample(100,baseline='unrounded-movement-8x');c['ResolutionCompletedFrames']=7
+        d['Samples']=[a,b,c];r=audit.summarize(d)
+        self.assertEqual(r['clean_samples'],0)
+        self.assertEqual(r['experiment_samples'],3)
+        self.assertEqual(r['checks_by_condition']['unrounded-movement-8x']['camera'],{'match':2})
+        self.assertEqual(r['resolution_max_completed_frames'],{'unrounded-movement-8x':7})
+
     def test_unrounded_is_measured_but_not_counted_as_native_baseline(self):
         d=self.fixture();a=self.sample();b=self.sample(50,baseline='unrounded-movement')
         b['Entities'][0]['LogicalWorld']=dict(X=.25,Y=0)

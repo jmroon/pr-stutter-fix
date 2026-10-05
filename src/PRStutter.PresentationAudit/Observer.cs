@@ -24,6 +24,7 @@ internal static class Observer
     private static bool _runtimePresent;
     private static bool _unroundedPresent;
     private static PropertyInfo? _unroundedState;
+    private static PropertyInfo? _renderScale, _resolutionFrames;
     private static string _baseline = "waiting for field";
     public static bool Expired => Window.Expired(Stopwatch.GetTimestamp());
     public static string Status => Window.Active ? $"Audit RECORDING {Math.Min(60, (Stopwatch.GetTimestamp() - _started) / Stopwatch.Frequency)} / 60s | {_samples} samples | {_baseline} | Ctrl+F11 stop" : _status + " | " + Writer.Status;
@@ -35,11 +36,14 @@ internal static class Observer
         _baseline = "waiting for field";
         _ticks = _maxTicks = 0; _started = Stopwatch.GetTimestamp();
         _runtimeCurrent = null; _runtimeFlags = null; _runtimePresent = false;
-        _unroundedPresent = false; _unroundedState = null;
+        _unroundedPresent = false; _unroundedState = null; _renderScale = _resolutionFrames = null;
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
             if (assembly.GetName().Name == "PRStutter.UnroundedExperiment") {
                 _unroundedPresent = true;
                 _unroundedState = assembly.GetType("PRStutter.UnroundedExperiment.ExperimentStatus")?.GetProperty("State", BindingFlags.Static | BindingFlags.Public);
+                var status = _unroundedState?.DeclaringType;
+                _renderScale = status?.GetProperty("RequestedRenderScale", BindingFlags.Static | BindingFlags.Public);
+                _resolutionFrames = status?.GetProperty("ResolutionCompletedFrames", BindingFlags.Static | BindingFlags.Public);
             }
             if (assembly.GetName().Name != "PRStutter.TimingExperiment") continue;
             _runtimePresent = true;
@@ -67,7 +71,10 @@ internal static class Observer
         }
         if (_unroundedPresent) {
             string? state = _unroundedState?.GetValue(null) as string;
-            if (state == "on") return "unrounded-movement";
+            if (state == "on") {
+                int scale = _renderScale == null ? 1 : (int)_renderScale.GetValue(null)!;
+                return scale == 1 ? "unrounded-movement" : scale == 8 ? "unrounded-movement-8x" : "unrounded-status-unknown-or-fault";
+            }
             if (state != "off") return "unrounded-status-unknown-or-fault";
         }
         return _runtimePresent ? "corrections-disabled" : "runtime-absent";
@@ -95,7 +102,7 @@ internal static class Observer
         var camera = follow?.camera;
         string baseline = Baseline();
         _baseline = baseline;
-        string scope = baseline is "runtime-absent" or "corrections-disabled" or "unrounded-movement" ? "" : baseline;
+        string scope = baseline is "runtime-absent" or "corrections-disabled" or "unrounded-movement" or "unrounded-movement-8x" ? "" : baseline;
         if (follow == null || map == null || model == null || target == null || camera == null || field.player == null) {
             _rows!.Add(qpc, new { Qpc = qpc, Frame = Time.frameCount, Area = field.currentAreaId, Baseline = baseline, Status = "missing-field-input" });
             _samples++; return;
@@ -166,6 +173,8 @@ internal static class Observer
         }
         _rows!.Add(qpc, new {
             Qpc = qpc, Frame = Time.frameCount, Delta = Time.deltaTime, Controller = field.Pointer.ToInt64(),
+            RequestedRenderScale = _renderScale?.GetValue(null) as int? ?? 1,
+            ResolutionCompletedFrames = _resolutionFrames?.GetValue(null) as int? ?? 0,
             Area = field.currentAreaId, View = (int)field.MapViewType, Baseline = baseline, Status = "sample",
             TargetId = target.GetInstanceID(), TargetWorld = targetWorld, PlayerWorld = playerWorld,
             CameraId = camera.GetInstanceID(), CameraWorld = cameraWorld, CameraInternal = P(follow.position),
@@ -189,7 +198,7 @@ internal static class Observer
         Window.Stop();
         var rows = _rows!.Snapshot(0); long overwritten = _rows.Overwritten; _rows = null;
         Writer.TrySave(new {
-            SchemaVersion = 1, Kind = "presentation-adapter-audit", Game = Plugin.Game, Version = "0.1.1",
+            SchemaVersion = 1, Kind = "presentation-adapter-audit", Game = Plugin.Game, Version = "0.1.2",
             QpcFrequency = Stopwatch.Frequency, StartedQpc = _started, SavedQpc = Stopwatch.GetTimestamp(), Reason = reason,
             Phase = "FieldController.UpdateVisualInstancePosition.postfix", Samples = rows,
             Overhead = new { SampleCount = _samples, TotalTicks = _ticks, MaxTicks = _maxTicks, Overwritten = overwritten },

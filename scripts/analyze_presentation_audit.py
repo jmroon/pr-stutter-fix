@@ -21,7 +21,8 @@ def summarize(data):
     experiment_samples = 0
     by_condition = defaultdict(lambda: {k: Counter() for k in checks})
     fractional = defaultdict(Counter)
-    comparable = ('runtime-absent', 'corrections-disabled', 'unrounded-movement')
+    comparable = ('runtime-absent', 'corrections-disabled', 'unrounded-movement', 'unrounded-movement-8x')
+    resolution_frames = {}
 
     def check(kind, value, sample, entity=None):
         status = value.get('Status', 'missing-check')
@@ -61,7 +62,10 @@ def summarize(data):
             continue
         clean = s['Baseline'] in comparable
         clean_samples += s['Baseline'] in ('runtime-absent', 'corrections-disabled')
-        experiment_samples += s['Baseline'] == 'unrounded-movement'
+        experiment_samples += s['Baseline'] in ('unrounded-movement', 'unrounded-movement-8x')
+        frames = s.get('ResolutionCompletedFrames')
+        if isinstance(frames, int) and frames >= 0:
+            resolution_frames[s['Baseline']] = max(resolution_frames.get(s['Baseline'], 0), frames)
         check('camera', s.get('CameraCheck', {}), s)
         check('map', s.get('MapCheck', {}), s)
         for entity in s['Entities']:
@@ -113,13 +117,14 @@ def summarize(data):
                 outcome='disagreements-found' if failed else 'observed-checks-match' if compared else 'no-clean-comparisons',
                 checks={k: dict(v) for k, v in checks.items()},
                 checks_by_condition={b: {k: dict(v) for k, v in c.items()} for b, c in by_condition.items()},
+                resolution_max_completed_frames=resolution_frames,
                 fractional_logical_observations={b: dict(v) for b, v in fractional.items()},
                 max_error_units={k: max(v, default=None) for k, v in errors.items()},
                 visual_by_role={k: dict(v) for k, v in roles.items()}, follow_target_roles=dict(target_roles),
                 observed_patterns=dict(patterns), examples=examples,
                 observer_mean_ms=overhead.get('TotalTicks', 0)*1000/data['QpcFrequency']/count if count else None,
                 observer_max_ms=overhead.get('MaxTicks', 0)*1000/data['QpcFrequency'],
-                limitations='Sampled XY mapping agreement only; unrounded-movement samples are an experiment, not an unmodified baseline. Fractional observations do not establish gameplay safety. Unobserved roles/modes are untested; excluded checks are not matches. Camera-step patterns do not identify their cause. No final-render, shadow/material, jitter or timing-correction proof.')
+                limitations='Sampled XY mapping agreement only; unrounded-movement modes are experiments, not an unmodified baseline. The 8x label describes requested resolution; require completed render frames as execution evidence. Fractional observations do not establish gameplay safety. Unobserved roles/modes are untested; excluded checks are not matches. Camera-step patterns do not identify their cause. No final-pixel, shadow/material, jitter or timing-correction proof.')
 
 
 if __name__ == '__main__':

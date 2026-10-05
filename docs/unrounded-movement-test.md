@@ -1,9 +1,10 @@
 # Unrounded shared movement experiment
 
-Version 0.1.0 tests removing XY rounding at the movement source in the inspected
+Version 0.2.0 tests removing XY rounding at the movement source in the inspected
 FFIV/FFVI builds. This changes logical positions and is not yet a supported fix.
 It is separate from the proposed presentation replacement, old timing/grid
-corrections and read-only presentation audit. No scene-ID conditions are used.
+corrections and read-only presentation audit. It adds an optional resolution-only
+8x comparison with no position compensation. No scene-ID conditions are used.
 
 ## Controls and first comparison
 
@@ -14,12 +15,14 @@ Install with the game closed:
 # Or -Game FFIV
 ```
 
-This installs the experiment and audit 0.1.1, backs up their previous DLLs and
+This installs the experiment and audit 0.1.2, backs up their previous DLLs and
 the affected configs, and leaves old corrections/debug recording disabled.
 Existing timing/grid DLLs and game/save files are not changed. The experiment
 starts OFF every launch; there is no persistent enable setting.
 
 - **Shift+F11**: enable/disable unrounded movement. The panel displays ON/OFF.
+- **Alt+F11**: while movement is ON, switch between stock and 8x field resolution.
+  Turn CRT OFF first. The panel shows the resolution and completed render frames.
 - **Ctrl+F11**: start/stop the independent 60-second spatial recording.
 - The experiment restores its calls after 120 seconds, focus loss, quit or unload.
 - Keep F9/F10 off. The experiment refuses activation if the old correction
@@ -27,24 +30,59 @@ starts OFF every launch; there is no persistent enable setting.
 - F12 is unchanged. Shift+F11 can also reach the old F11 incident marker if someone
   separately enables normal diagnostics; leave that recorder off for this test.
 
-Start the audit, walk briefly with the test OFF, then press Shift+F11 and repeat
-walking, turning, stopping and touching a wall. If convenient, include a moving
-NPC or the scripted camera sequence. Stop with Ctrl+F11 when finished; there is
-no need to fill 60 seconds. For the initial gameplay check, use an existing save
-and avoid saving over it while the experiment is enabled.
+For the resolution comparison, turn CRT OFF, load an ordinary field area, press
+Shift+F11 to enable unrounded movement, then Ctrl+F11 to start the audit. Walk
+briefly at stock resolution; press Alt+F11 and confirm 8x with an increasing
+completed-frame count. Repeat the same walking/turning/stopping, then Alt+F11
+back to stock for another short comparison. Ctrl+F11 stops/saves. Stay in one
+area for this first comparison; there is no need to fill 60 seconds or repeat a
+cinematic. Use an existing save and avoid saving over it during the experiment.
 
-Audit samples distinguish `unrounded-movement` from `corrections-disabled`.
+Audit samples distinguish `unrounded-movement`, `unrounded-movement-8x` and
+`corrections-disabled`. The 8x label is a request state, not proof of rendering:
+`ResolutionCompletedFrames` records completed field-plus-compositor draws for
+the current activation, and the analyzer reports the maximum by condition.
 The analyzer reports comparisons and fractional logical positions by condition
 and entity role; it never counts an experiment sample as an unmodified baseline.
 Unknown/faulted experiment state excludes comparisons. The observer has no
 compile-time dependency on the experiment and performs no mutation.
 
-This first comparison changes neither frame cap nor render-target resolution.
-CRT setting can remain as it was. Coarse raster sampling, tile time loss and
-native sprite animation frame changes remain. No visible improvement by itself
-would not establish that the bypass failed: fractional logical observations
-identify whether the intended path ran. Gameplay and final pixels require live
-checks even when the position equations still match.
+The comparison keeps the frame cap/VSync configuration unchanged. Larger targets
+can change GPU load; activation also performs discovery and allocation, so this
+does not promise unchanged frame delivery. Tile time loss and native sprite
+animation frame changes remain. Fractional observations identify whether the
+movement bypass ran. Gameplay and final pixels require live checks even when
+the position equations still match.
+
+## Resolution-only implementation
+
+The optional module clones the existing 320x180 field render targets at 2560x1440,
+preserving their formats/filtering/wrapping. It accepts only the inspected FFIV
+two-camera/one-target and FFVI four-camera/three-target layouts. Existing material
+consumers, including the final compositor and transparency bindings, are found
+once at activation. No recurring full-scene scan is performed.
+
+Before drawing, it temporarily substitutes those targets and material textures.
+After all admitted field cameras and the final compositor finish, it restores
+the original bindings. Update also recovers bindings if a previous callback was
+missed. Resources are retained across ordinary frames. On stop, bindings are
+restored immediately, but textures/passes are released in Update or unload,
+outside render callbacks and only after successful restoration. There are no transform, projection, shader-float or pacing writes,
+and no dependency on the older GridExperiment assembly or VisualMotion code.
+Only pure layout/ownership/callback-gate helpers are shared as source.
+
+Camera target switches and movement at map boundaries are not themselves grounds
+for stopping. A changed map/model/view, camera topology, display size, material
+binding or unsupported compositor effect stops resolution mode. It does not
+automatically restart or stop the separate movement bypass. The label and log
+give the reason; Alt+F11 can start a fresh comparison in a stable supported area.
+A restoration failure is latched as a fault, retains resources for cleanup and
+also stops the movement bypass. Shift+F11 OFF, timeout, focus loss, quit and unload
+stop both components. The setting is never persisted across launches.
+
+CRT is deliberately excluded because the original CRT shader did not work
+correctly with enlarged targets in earlier experiments. This comparison does
+not attempt to repair that filter or establish complete cinematic compatibility.
 
 ## Exact intervention
 
@@ -110,6 +148,13 @@ restoration, foreign ownership, latched faults and wrong-thread refusal. A
 separate Windows x64 test process executes a synthetic float CALL before, during
 and after bypass, checking fractional argument preservation and real executable
 memory protection/cache operations. It never loads or patches the game.
+
+Version 0.2.0 also tests completed field/compositor callback ordering, missing or
+repeated callbacks, first-frame admission and next-frame recovery, binding writes
+that throw after mutation, restoration failures and native binding replacement.
+Compiled assembly checks reject transform/projection/pacing writes and linkage
+to older compensation code. The independent audit still passes its read-only
+assembly checks; analyzer tests separate stock/8x requests and completed frames.
 
 Both builds and the updated read-only audit pass offline checks. Live shared-path
 coverage was initially unverified. The first FFVI result below establishes sampled
