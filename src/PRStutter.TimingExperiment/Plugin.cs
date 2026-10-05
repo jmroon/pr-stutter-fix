@@ -19,7 +19,7 @@ using ArrivalIterator = Last.Map.FootMonitoring._UpdateMonitor_d__41;
 
 namespace PRStutter.TimingExperiment;
 
-[BepInPlugin("local.prstutter.timing", "PR Stutter Tile Timing Test", "0.7.0")]
+[BepInPlugin("local.prstutter.timing", "PR Stutter Tile Timing Test", "0.8.0")]
 [BepInDependency("local.prstutter.grid", "0.10.0")]
 public sealed class Plugin : BasePlugin
 {

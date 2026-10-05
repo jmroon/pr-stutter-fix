@@ -32,6 +32,7 @@ internal static class Observer
     private static PropertyInfo? _resolutionFault;
     private static PropertyInfo? _comparisonMode, _carriedTiles;
     private static string _baseline = "waiting for field";
+    public static bool Recording => Window.Active;
     public static bool Expired => Window.Expired(Stopwatch.GetTimestamp());
     public static string Status => Window.Active ? $"Audit RECORDING {Math.Min(60, (Stopwatch.GetTimestamp() - _started) / Stopwatch.Frequency)} / 60s | {_samples} samples | {_baseline} | Ctrl+F11 stop" : _status + " | " + Writer.Status;
     public static void Toggle()

@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace PRStutter.PresentationAudit;
 
-[BepInPlugin("local.prstutter.presentationaudit", "PR Stutter Presentation Audit", "0.2.2")]
+[BepInPlugin("local.prstutter.presentationaudit", "PR Stutter Presentation Audit", "0.3.0")]
 public sealed class Plugin : BasePlugin
 {
     private Harmony? _harmony;
@@ -53,17 +53,26 @@ public sealed class Plugin : BasePlugin
         return Match("GameAssembly.dll", AssemblyHash) && Match($"FINAL FANTASY {Roman}_Data/il2cpp_data/Metadata/global-metadata.dat", MetadataHash);
     }
 }
+public static class AuditControl
+{
+    private static bool _requested;
+    public static string Status => Observer.Status;
+    public static void RequestToggle() => _requested = true;
+    internal static bool TakeRequest() { bool value = _requested; _requested = false; return value; }
+}
 public sealed class Driver : MonoBehaviour
 {
     public Driver(IntPtr pointer) : base(pointer) { }
     public void Update()
     {
         try {
-            if (Input.GetKeyDown(KeyCode.F11) && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))) Observer.Toggle();
+            bool key = Input.GetKeyDown(KeyCode.F11) && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+                && !Input.GetKey(KeyCode.LeftAlt) && !Input.GetKey(KeyCode.RightAlt) && !Input.GetKey(KeyCode.LeftShift) && !Input.GetKey(KeyCode.RightShift);
+            if (AuditControl.TakeRequest() || key) Observer.Toggle();
             if (Observer.Expired) Observer.Stop("duration");
             Observer.ObserveLifecycle();
         } catch (Exception e) { Observer.Fault(e); }
     }
-    public void OnGUI() { try { GUI.Label(new Rect(12, Screen.height - 90, Math.Max(200, Screen.width - 24), 50), Observer.Status); } catch { } }
+    public void OnGUI() { if (!Observer.Recording) return; try { GUI.Label(new Rect(12, Screen.height - 90, Math.Max(200, Screen.width - 24), 50), Observer.Status); } catch { } }
     public void OnApplicationQuit() { Observer.Stop("quit"); Observer.Wait(); }
 }

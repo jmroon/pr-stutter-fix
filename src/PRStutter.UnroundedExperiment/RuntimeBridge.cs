@@ -30,13 +30,20 @@ internal static class RuntimeBridge
     public static int Carried => _type == null ? 0 : (int)Property("CarriedTiles").GetValue(null)!;
     public static string Status => _type == null ? "bridge not loaded" : (string)Property("Status").GetValue(null)!;
     public static void SetUnrounded(bool value) => Property("UnroundedCarry").SetValue(null, value);
-    public static void Start(long deadline)
+    private static void Resolve()
     {
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             if (assembly.GetName().Name == "PRStutter.TimingExperiment")
                 _type = assembly.GetType("PRStutter.TimingExperiment.ComparisonControl");
-        if (_type == null) throw new InvalidOperationException("Install timing 0.7.0 and grid 0.10.0 for this comparison.");
-        Invoke("Start", deadline);
+        if (_type == null) throw new InvalidOperationException("Install timing 0.8.0 and grid 0.10.0 for smooth movement.");
+    }
+    public static void ManageControls(bool value)
+    {
+        Resolve(); Property("ManagedControls").SetValue(null, value);
+    }
+    public static void Start(long deadline)
+    {
+        Resolve(); Invoke("Start", deadline);
     }
     public static void Stop(string reason) { if (_type != null) Invoke("Stop", reason); }
     private static void Invoke(string name, object argument)

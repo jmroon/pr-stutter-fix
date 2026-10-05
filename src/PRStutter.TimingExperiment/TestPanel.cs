@@ -22,6 +22,7 @@ internal static class TestPanel
     public static bool SuppressTimingKey => true;
     public static void Tick()
     {
+        if (ComparisonControl.ManagedControls) return;
         bool toggle = _panelToggleRequested || Input.GetKeyDown(KeyCode.F9);
         _panelToggleRequested = false;
         if (toggle) AutomaticRuntime.Toggle();
@@ -38,7 +39,7 @@ internal static class TestPanel
     private static string State(bool active, string reason) => active ? "ON" : "SUSPENDED: " + reason;
     public static void Draw()
     {
-        if (_uiFailed) return;
+        if (_uiFailed || ComparisonControl.ManagedControls) return;
         if (ComparisonControl.Active) return; // The experiment displays actual A/B state.
         try {
             // Button clicks only queue a command for Update. Submit controls in

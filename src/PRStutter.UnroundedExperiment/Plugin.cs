@@ -34,7 +34,8 @@ public static class ExperimentStatus
     public static int ResolutionCompletedFrames => 0;
 }
 
-[BepInPlugin("local.prstutter.unrounded", "PR Stutter Stock Movement", "0.5.0")]
+[BepInPlugin("local.prstutter.unrounded", "PR Stutter Fix", "0.6.0")]
+[BepInDependency("local.prstutter.timing", "0.8.0")]
 public sealed class Plugin : BasePlugin
 {
     private Driver? _driver;
@@ -42,13 +43,15 @@ public sealed class Plugin : BasePlugin
     {
         Experiment.Log = Log;
         try {
-            Experiment.Initialize(); _driver = AddComponent<Driver>();
-            Log.LogInfo($"{Experiment.Game} stock movement 0.5.0 ready, OFF. Smooth walking button or Shift+F11 toggles; Ctrl+F11 records. Timing+pacing+unrounded; native rendering, no timeout. Supported field scripts retain precision/pacing; manual timing suspends and resumes. Unsupported scene families stay native.");
+            Experiment.Initialize(); RuntimeBridge.ManageControls(true); SettingsMenu.Initialize();
+            _driver = AddComponent<Driver>(); Experiment.RequestEnabled(SettingsMenu.Current.Enabled);
+            Log.LogInfo($"{Experiment.Game} smooth movement 0.6.0 ready. {SettingsMenu.Current.MenuKey}: settings menu; settings save per game. Diagnostics optional.");
         } catch (Exception e) { Experiment.Fault(e); }
     }
     public override bool Unload()
     {
         if (!Experiment.Stop("unload")) return false;
+        SettingsMenu.SetVisible(false); RuntimeBridge.ManageControls(false);
         if (_driver != null) UnityEngine.Object.Destroy(_driver);
         return true;
     }
@@ -67,7 +70,8 @@ internal static class Experiment
 #endif
     public static ManualLogSource? Log;
     private static PatchSet? _patches;
-    private static bool _fault, _running, _toggleRequested;
+    private static bool _fault, _running;
+    private static bool? _enabledRequest;
     private static string _note = "starting";
     public static bool Running => _running;
     public static string State => _fault || _patches?.Faulted == true ? "fault" : _patches?.Enabled == true ? "on" : "off";
@@ -78,7 +82,7 @@ internal static class Experiment
         "SMOOTH MOVEMENT ENABLED | precision " + (_patches?.Enabled == true ? "ON" : "suspended") + "\n" + RuntimeBridge.Status :
         "SMOOTH MOVEMENT " + (State == "fault" ? "FAULT" : "OFF") + "\n" + _note;
     // Unity GUI events only queue work; native patches change during Update.
-    public static void RequestToggle() => _toggleRequested = true;
+    public static void RequestEnabled(bool enabled) => _enabledRequest = enabled;
     public static void Initialize()
     {
         if (!Environment.Is64BitProcess) throw new NotSupportedException("x64 required");
@@ -111,25 +115,22 @@ internal static class Experiment
                 }
                 RuntimeBridge.SetUnrounded(precision);
             }
-            bool control = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
-            bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-            bool alt = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
-            bool toggle = _toggleRequested || (Input.GetKeyDown(KeyCode.F11) && shift && !control && !alt);
-            _toggleRequested = false;
-            if (!toggle) return;
-            if (_running) { Stop("manual"); return; }
+            if (!_enabledRequest.HasValue) return;
+            bool enabled = _enabledRequest.Value; _enabledRequest = null;
+            if (!enabled) { Stop("disabled in settings"); return; }
+            if (_running) return;
             if (State == "fault" || _patches == null) return;
             try {
                 RuntimeBridge.Start(long.MaxValue);
                 _running = true;
                 Log?.LogInfo("STOCK MOVEMENT ENABLED: native resolution; waiting for supported context; no timeout.");
-            } catch (Exception e) { Stop("start refused: " + e.Message); }
+            } catch (Exception e) { Fault(new InvalidOperationException("Start refused: " + e.Message, e)); }
         } catch (Exception e) { Fault(e); }
     }
     public static bool Stop(string reason)
     {
         bool wasRunning = _running || RuntimeBridge.Active;
-        _running = false; _toggleRequested = false;
+        _running = false; _enabledRequest = null;
         bool ok = true;
         // A native restore failure must not block timing/pacing cleanup.
         try { _patches?.Restore(); } catch (Exception e) { ok = false; Log?.LogError(e); }
@@ -152,45 +153,29 @@ internal static class Experiment
 public sealed class Driver : MonoBehaviour
 {
     public Driver(IntPtr pointer) : base(pointer) { }
-    public void Update() => Experiment.Tick();
-    private GUIStyle? _labelStyle, _buttonStyle;
-    private GUIContent? _content;
-    private long _nextRefresh;
-    private float _labelHeight, _lastWidth;
-    private int _lastFlags = -1, _lastFont;
-    private bool _panelFailed;
-    public void OnGUI()
+    private bool _menuFailed;
+    public void Update()
     {
-        if (_panelFailed) return;
-        try {
-            _labelStyle ??= new GUIStyle { wordWrap = true, alignment = TextAnchor.UpperLeft };
-            _buttonStyle ??= new GUIStyle { wordWrap = true, alignment = TextAnchor.MiddleCenter };
-            _labelStyle.normal.textColor = _buttonStyle.normal.textColor = Color.white;
-            int font = Math.Clamp(Screen.height / 65, 16, 22);
-            _labelStyle.fontSize = _buttonStyle.fontSize = font;
-            float width = Math.Min(620, Screen.width - 24), x = Screen.width - width - 12;
-            long now = Stopwatch.GetTimestamp();
-            int flags = (Experiment.Running ? 1 : 0) | (Experiment.State == "fault" ? 2 : 0);
-            if (_content == null || now >= _nextRefresh || flags != _lastFlags || width != _lastWidth || font != _lastFont) {
-                _content ??= new GUIContent();
-                _content.text = Experiment.Label;
-                _labelHeight = _labelStyle.CalcHeight(_content, width - 24);
-                _nextRefresh = now + Stopwatch.Frequency / 10;
-                _lastFlags = flags; _lastWidth = width; _lastFont = font;
-            }
-            float buttonY = 24 + _labelHeight;
-            GUI.Box(new Rect(x, 12, width, _labelHeight + font * 3 + 60), "");
-            GUI.Label(new Rect(x + 12, 24, width - 24, _labelHeight), _content, _labelStyle);
-            var button = new Rect(x + 12, buttonY + 8, width - 24, font + 24);
-            if (GUI.Button(button, "")) Experiment.RequestToggle();
-            GUI.Label(button, Experiment.Running ? "Turn smooth movement OFF" : "Enable smooth movement (stock resolution)", _buttonStyle);
-            GUI.Label(new Rect(x + 12, buttonY + font + 40, width - 24, font + 12),
-                "Shift+F11: toggle | Ctrl+F11: record", _labelStyle);
-        } catch (Exception e) {
-            _panelFailed = true;
-            Experiment.Log?.LogWarning("Smooth walking panel unavailable; Shift+F11 still works: " + e.Message);
+        // UI and persistence failures must not take down movement corrections.
+        try { SettingsMenu.Tick(); } catch (Exception e) { ReportMenuFailure(e); }
+        Experiment.Tick();
+    }
+    public void OnGUI() { try { SettingsMenu.Draw(); } catch (Exception e) { ReportMenuFailure(e); } }
+    private void ReportMenuFailure(Exception e)
+    {
+        if (!_menuFailed) Experiment.Log?.LogWarning("Settings menu error: " + e);
+        _menuFailed = true;
+    }
+    public void OnApplicationFocus(bool focus)
+    {
+        if (!focus) {
+            try { SettingsMenu.SetVisible(false); } catch (Exception e) { ReportMenuFailure(e); }
+            Experiment.SuspendForFocus();
         }
     }
-    public void OnApplicationFocus(bool focus) { if (!focus) Experiment.SuspendForFocus(); }
-    public void OnApplicationQuit() => Experiment.Stop("quit");
+    public void OnApplicationQuit()
+    {
+        try { SettingsMenu.SetVisible(false); } catch (Exception e) { ReportMenuFailure(e); }
+        Experiment.Stop("quit");
+    }
 }

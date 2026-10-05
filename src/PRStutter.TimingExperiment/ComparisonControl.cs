@@ -28,6 +28,7 @@ public static class ComparisonControl
     private static bool _fault;
     private static string _faultReason = "", _lastLog = "";
     private static string _pacingIdentity = "";
+    public static bool ManagedControls { get; set; }
     public static bool Active { get; private set; }
     public static bool UnroundedCarry { get; set; }
     public static bool TimingActive => Timing.Active;

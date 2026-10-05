@@ -34,7 +34,7 @@ internal static class AutomaticRuntime
     private static CorrectionSnapshot _lastPublished;
     private static int _generation;
     private static bool _shutdown;
-    public static bool Enabled => _enabled?.Value ?? false;
+    public static bool Enabled => !ComparisonControl.ManagedControls && (_enabled?.Value ?? false);
     public static void Initialize(ConfigFile config)
     {
         CorrectionStatus.Game = GameProfile.Id;
@@ -48,13 +48,14 @@ internal static class AutomaticRuntime
     }
     public static void Toggle()
     {
-        if (ComparisonControl.Active) { Timing.Note("F9 ignored while stock movement owns timing/pacing; Shift+F11 stops it."); return; }
+        if (ComparisonControl.ManagedControls || ComparisonControl.Active) { Timing.Note("F9 ignored while smooth movement owns timing/pacing; use its settings menu."); return; }
         _enabled.Value = !Enabled; _generation++; _nextProbe = 0;
         if (!Enabled) Suspend("disabled by F9");
     }
     public static void Tick()
     {
         if (_shutdown) return;
+        if (ComparisonControl.ManagedControls && !ComparisonControl.Active) return;
         if (ComparisonControl.Active) { Publish(Stopwatch.GetTimestamp(), ComparisonControl.ContextKind + ";generation=" + ComparisonControl.Generation); return; }
         long now = Stopwatch.GetTimestamp();
         if (now < _nextProbe) { Publish(now); return; }
