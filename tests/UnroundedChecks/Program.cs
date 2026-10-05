@@ -60,6 +60,7 @@ static class Program
         }
         Console.WriteLine("PASS: exact installed PE call-site fingerprints and shared rounding-helper destinations ("+profile+").");
         NativeRoundTrip();
+        ResolutionChecks.Run(args[2]);
     }
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate float Unary(float value);
     private static void NativeRoundTrip()

@@ -5,6 +5,10 @@
     <GameDirectory Condition="'$(GameDirectory)' == ''">D:\SteamLibrary\steamapps\common\FINAL FANTASY VI PR</GameDirectory>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../PRStutter.RenderExperiment/ScopedOverride.cs" Link="ScopedOverride.cs" />
+    <Compile Include="../PRStutter.GridExperiment/FieldLayoutPolicy.cs" Link="FieldLayoutPolicy.cs" />
+    <Compile Include="../PRStutter.GridExperiment/RenderFrameGate.cs" Link="RenderFrameGate.cs" />
+    <Reference Include="Assembly-CSharp" HintPath="$(GameDirectory)/BepInEx/interop/Assembly-CSharp.dll" Private="false" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(GameDirectory)/BepInEx/interop/UnityEngine.CoreModule.dll" Private="false" />
     <Reference Include="UnityEngine.InputLegacyModule" HintPath="$(GameDirectory)/BepInEx/interop/UnityEngine.InputLegacyModule.dll" Private="false" />
     <Reference Include="UnityEngine.IMGUIModule" HintPath="$(GameDirectory)/BepInEx/interop/UnityEngine.IMGUIModule.dll" Private="false" />

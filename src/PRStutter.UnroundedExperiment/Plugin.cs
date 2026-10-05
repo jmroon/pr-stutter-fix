@@ -6,14 +6,20 @@ using System.Security.Cryptography;
 using BepInEx;
 using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
+using Il2CppInterop.Runtime.Injection;
 using UnityEngine;
 
 namespace PRStutter.UnroundedExperiment;
 
 // Read-only reflection contract for the independent audit. Faults never masquerade as OFF.
-public static class ExperimentStatus { public static string State => Experiment.State; }
+public static class ExperimentStatus
+{
+    public static string State => Experiment.State;
+    public static int RequestedRenderScale => Resolution.RequestedScale;
+    public static int ResolutionCompletedFrames => Resolution.CompletedFrames;
+}
 
-[BepInPlugin("local.prstutter.unrounded", "PR Stutter Unrounded Movement Test", "0.1.0")]
+[BepInPlugin("local.prstutter.unrounded", "PR Stutter Unrounded Movement Test", "0.2.0")]
 public sealed class Plugin : BasePlugin
 {
     private Driver? _driver;
@@ -21,13 +27,14 @@ public sealed class Plugin : BasePlugin
     {
         Experiment.Log = Log;
         try {
-            Experiment.Initialize(); _driver = AddComponent<Driver>();
-            Log.LogInfo($"{Experiment.Game} unrounded movement ready, OFF. Shift+F11 toggles for 120s; Ctrl+F11 records with audit 0.1.1. Keep F9/F10 off. Only reviewed movement rounding calls are bypassed in process memory; no disk game edits.");
+            Experiment.Initialize(); ClassInjector.RegisterTypeInIl2Cpp<ResolutionPass>(); _driver = AddComponent<Driver>();
+            Log.LogInfo($"{Experiment.Game} unrounded movement 0.2.0 ready, OFF. Shift+F11 toggles for 120s; Alt+F11 toggles resolution-only 8x while ON (CRT OFF); Ctrl+F11 records with audit 0.1.2. Keep F9/F10 off. No pose compensation or pacing changes.");
         } catch (Exception e) { Experiment.Fault(e); }
     }
     public override bool Unload()
     {
         if (!Experiment.Stop("unload")) return false;
+        if (!Resolution.ReleaseStopped()) return false;
         if (_driver != null) UnityEngine.Object.Destroy(_driver);
         return true;
     }
@@ -52,7 +59,7 @@ internal static class Experiment
     private static bool _fault;
     private static long _deadline;
     private static string _note = "starting";
-    public static string State => _fault || _patches?.Faulted == true ? "fault" : _patches?.Enabled == true ? "on" : "off";
+    public static string State => _fault || Resolution.Faulted || _patches?.Faulted == true ? "fault" : _patches?.Enabled == true ? "on" : "off";
     public static string Label => $"UNROUNDED MOVEMENT {State.ToUpperInvariant()} | Shift+F11 toggle | " +
         (State == "on" ? $"{Math.Max(0, (_deadline - Stopwatch.GetTimestamp()) / Stopwatch.Frequency)}s remaining" : _note);
     public static void Initialize()
@@ -102,9 +109,19 @@ internal static class Experiment
     public static void Tick()
     {
         try {
+            Resolution.Recover();
+            if (Resolution.Faulted && !_fault) { Fault(new InvalidOperationException("Resolution cleanup failed; restart game")); return; }
             if (State == "on" && (!Compatible() || Stopwatch.GetTimestamp() >= _deadline)) Stop("timeout or other corrections enabled");
+            bool control = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+            bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            bool alt = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
+            if (Input.GetKeyDown(KeyCode.F11) && alt && !control && !shift) {
+                if (State == "on") Resolution.Toggle();
+                else Log?.LogInfo("Resolution test requires unrounded movement ON first (Shift+F11).");
+                return;
+            }
             if (!Input.GetKeyDown(KeyCode.F11) || !(Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) ||
-                Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) return;
+                control || alt) return;
             if (State == "on") { Stop("manual"); return; }
             if (State == "fault" || _patches == null) return;
             FindRuntime();
@@ -117,9 +134,11 @@ internal static class Experiment
     {
         try {
             bool wasOn = _patches?.Enabled == true;
+            bool resolutionRestored = Resolution.Stop("unrounded stop");
+            if (!resolutionRestored) _fault = true;
             _patches?.Restore(); _note = "native rounding restored (" + reason + ")";
             if (wasOn) Log?.LogInfo("UNROUNDED OFF: " + reason + "; owned calls restored.");
-            return _patches?.HasOwnedSites != true;
+            return resolutionRestored && _patches?.HasOwnedSites != true;
         } catch (Exception e) { _fault = true; _note = "RESTORE FAILED; restart game"; Log?.LogError(e); return false; }
     }
     public static void Fault(Exception e) { _fault = true; Stop("fault"); _note = "FAULT; restart game"; Log?.LogError(e); }
@@ -129,7 +148,11 @@ public sealed class Driver : MonoBehaviour
 {
     public Driver(IntPtr pointer) : base(pointer) { }
     public void Update() => Experiment.Tick();
-    public void OnGUI() { try { GUI.Label(new Rect(12, Screen.height - 135, Math.Max(200, Screen.width - 24), 40), Experiment.Label); } catch { } }
+    public void LateUpdate() => Resolution.Prepare();
+    public void OnGUI() { try {
+        GUI.Label(new Rect(12, Screen.height - 170, Math.Max(200, Screen.width - 24), 35), Experiment.Label);
+        GUI.Label(new Rect(12, Screen.height - 135, Math.Max(200, Screen.width - 24), 40), Resolution.Label);
+    } catch { } }
     public void OnApplicationFocus(bool focus) { if (!focus) Experiment.Stop("focus lost"); }
     public void OnApplicationQuit() => Experiment.Stop("quit");
 }

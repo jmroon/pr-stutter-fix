@@ -8,6 +8,6 @@ Push-Location $projectRoot
 try {
     & $dotnet build src/PRStutter.UnroundedExperiment/PRStutter.UnroundedExperiment.csproj -c Release --nologo "-p:GameDirectory=$($testProfile.Directory)" "-p:PrGame=$Game"
     if ($LASTEXITCODE -ne 0) { throw 'Unrounded experiment build failed.' }
-    & $dotnet run --project tests/UnroundedChecks/UnroundedChecks.csproj -c Release -- $Game (Join-Path $testProfile.Directory 'GameAssembly.dll')
+    & $dotnet run --project tests/UnroundedChecks/UnroundedChecks.csproj -c Release -- $Game (Join-Path $testProfile.Directory 'GameAssembly.dll') (Join-Path $projectRoot "src/PRStutter.UnroundedExperiment/$($testProfile.Output)/PRStutter.UnroundedExperiment.dll")
     if ($LASTEXITCODE -ne 0) { throw 'Unrounded experiment checks failed.' }
 } finally { Pop-Location }

@@ -3,5 +3,9 @@
   <ItemGroup>
     <Compile Include="../../src/PRStutter.UnroundedExperiment/PatchPlan.cs" Link="PatchPlan.cs" />
     <Compile Include="../../src/PRStutter.UnroundedExperiment/ProcessCodeMemory.cs" Link="ProcessCodeMemory.cs" />
+    <Compile Include="../../src/PRStutter.UnroundedExperiment/ResolutionFrame.cs" Link="ResolutionFrame.cs" />
+    <Compile Include="../../src/PRStutter.GridExperiment/RenderFrameGate.cs" Link="RenderFrameGate.cs" />
+    <Compile Include="../../src/PRStutter.GridExperiment/FieldLayoutPolicy.cs" Link="FieldLayoutPolicy.cs" />
+    <Compile Include="../../src/PRStutter.RenderExperiment/ScopedOverride.cs" Link="ScopedOverride.cs" />
   </ItemGroup>
 </Project>
