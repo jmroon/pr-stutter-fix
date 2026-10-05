@@ -1,21 +1,22 @@
 # Pixel Remaster stutter investigation
 
-**Current build:** [stock-resolution smooth movement](docs/stock-movement-mode.md).
-Use the **Enable smooth movement (stock resolution)** button or **Shift+F11**.
-Timing, display pacing and unrounded movement have independent scene lifetimes.
-**Ctrl+F11** records the independent audit. The 8x renderer is absent from this
-build; Alt+F11 no longer switches resolutions. The mode starts OFF; once enabled,
-it suspends in unsupported contexts and resumes in eligible fields. Field scripts
-can retain precision/pacing while manual timing suspends. Live transition and
-cinematic testing remains outstanding. Grid 0.10.0 / Timing 0.7.0 / Stock Movement
-0.5.0 / Audit 0.2.0 are the current bundle.
-Install both supported profiles with `scripts/Deploy-ComparisonExperiment.ps1`.
-[Rollback checkpoints and retained findings](docs/offshoot-checkpoint.md).
-The older automatic runtime described below remains experimental.
+**Current build:** [persistent smooth-movement menu](docs/settings-menu.md).
+Press **F11** to open settings. Smooth movement defaults on, rendering defaults
+**4x (1280x720)**; Native and 8x are also available. Choices save automatically
+per game and survive scene suspension/restart. The menu key can be changed to
+F10 or Insert. Higher resolution requires **CRT off**.
 
-An optional, removable **165 Hz resolution comparison** now provides **Alt+F11:
-A stock / B 4x / C 8x** with CRT off. It leaves the stock movement/timing/pacing DLLs
-unchanged. See the [A/B procedure](docs/stock-movement-mode.md#temporary-165-hz-resolution-comparison).
+Install with `scripts/Deploy-SmoothMovement.ps1 -Game FFVI` (or `FFIV`).
+The **Diagnostics and troubleshooting** section controls the optional 60-second
+recorder; **Ctrl+F11** remains available. Old Shift+F11/Alt+F11 experiment toggles
+and always-visible panels are retired. Pause the game before using the menu.
+
+The renderer remains separate from movement and diagnostics. Unknown scenes use
+native rendering; supported walking reacquires after validation. Cinematic/CRT
+coverage and the new UI/lifecycle still need live verification. Both game profiles
+pass offline checks. See the [menu guide](docs/settings-menu.md) for controls,
+limitations and rollback, and [earlier findings](docs/stock-movement-mode.md) for
+the experiments that led here.
 
 Experimental Windows modding project investigating movement judder in **Final
 Fantasy VI Pixel Remaster**. The current development build automatically manages

@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([ValidateSet('FFVI','FFIV')][string]$Game='FFVI')
+param([ValidateSet('FFVI','FFIV')][string]$Game='FFVI', [switch]$Integrated)
 $ErrorActionPreference='Stop'
 $comparisonRoot=Split-Path $PSScriptRoot -Parent
 . "$PSScriptRoot/Get-GameProfile.ps1"
@@ -16,10 +16,14 @@ foreach ($conflict in @('FFPR_Fix.dll','PRStutter.RenderExperiment.dll','PRStutt
 & "$PSScriptRoot/Test-TimingExperiment.ps1" -Game $Game
 & "$PSScriptRoot/Test-UnroundedExperiment.ps1" -Game $Game
 & "$PSScriptRoot/Test-PresentationAudit.ps1" -Game $Game
+& "$PSScriptRoot/Test-Settings.ps1"
+if ($Integrated) { & "$PSScriptRoot/Test-ResolutionComparison.ps1" -Game $Game }
 $backup=Join-Path $comparisonRoot ('artifacts/plugin-backups/comparison-'+$Game+'-'+[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss-fff'))
 New-Item -ItemType Directory -Path $backup -Force | Out-Null
 $outputs=@()
-foreach ($name in @('GridExperiment','TimingExperiment','UnroundedExperiment','PresentationAudit')) {
+$components=@('GridExperiment','TimingExperiment','UnroundedExperiment','PresentationAudit')
+if ($Integrated) { $components += 'ResolutionComparison' }
+foreach ($name in $components) {
     $outputs += @{Path=(Join-Path $plugins "PRStutter.$name/PRStutter.$name.dll"); Source=(Join-Path $comparisonRoot "src/PRStutter.$name/$($comparisonProfile.Output)/PRStutter.$name.dll"); Text=$null}
 }
 foreach ($item in @(@('timing','Corrections'),@('playthrough','Debug'))) {
@@ -37,7 +41,7 @@ foreach ($output in $outputs) {
     $entries += [ordered]@{Path=$output.Path; Previous=$previous; Backup=$saved; PreviousHash=$(if($previous){(Get-FileHash -LiteralPath $saved).Hash}else{$null}); InstalledHash=$null}
 }
 $manifest=Join-Path $backup 'manifest.json'
-$record=[ordered]@{Game=$Game; Kind='scene-aware-stock'; GitCommit=(git -C $comparisonRoot rev-parse HEAD); Files=$entries; Complete=$false; RuntimeVerified=$false}
+$record=[ordered]@{Game=$Game; Kind=$(if($Integrated){'integrated-smooth-movement'}else{'scene-aware-stock'}); GitCommit=(git -C $comparisonRoot rev-parse HEAD); Files=$entries; Complete=$false; RuntimeVerified=$false}
 $record | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifest
 foreach ($output in $outputs) {
     if (Get-Process -Name $comparisonProfile.Process -ErrorAction SilentlyContinue) { throw "Game started; inspect incomplete install: $manifest" }
@@ -49,4 +53,4 @@ foreach ($output in $outputs) {
 }
 $record.Complete=$true
 $record | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifest
-Write-Host "$Game scene-aware stock movement installed OFF. Smooth movement button/Shift+F11 toggles; Ctrl+F11 records. Enabled intent survives supported context transitions; no 8x mode. Restore manifest: $manifest"
+Write-Host "$Game smooth movement installed. F11 opens settings (or saved menu key); choices persist per game. First launch defaults ON, 4x selected. Rendering module included: $Integrated. CRT OFF for 4x/8x. Restore manifest: $manifest"

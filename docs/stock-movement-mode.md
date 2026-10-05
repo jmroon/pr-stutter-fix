@@ -1,3 +1,6 @@
+> Current integrated controls and installation: [settings menu](settings-menu.md).
+> The controls and versions below describe historical experiments.
+
 # Stock-resolution smooth movement
 
 Stock Movement 0.5.0 preserves enabled intent across scene changes, with separate
