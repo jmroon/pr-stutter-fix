@@ -4,9 +4,11 @@ $ErrorActionPreference='Stop'
 $comparisonRoot=Split-Path $PSScriptRoot -Parent
 . "$PSScriptRoot/Get-GameProfile.ps1"
 . "$PSScriptRoot/BaselineConfiguration.ps1"
+. "$PSScriptRoot/ComparisonOutput.ps1"
 $comparisonProfile=Get-PrGameProfile -Game $Game
 Assert-PrGameBuild $comparisonProfile
 if (Get-Process -Name $comparisonProfile.Process -ErrorAction SilentlyContinue) { throw "Close $Game before deployment." }
+& "$PSScriptRoot/Test-ComparisonOutput.ps1"
 $plugins=Join-Path $comparisonProfile.Directory 'BepInEx/plugins'
 foreach ($conflict in @('FFPR_Fix.dll','PRStutter.RenderExperiment.dll','PRStutter.NativeScrollExperiment.dll')) {
     if (Get-ChildItem -LiteralPath $plugins -Filter $conflict -Recurse -File) { throw "Disable conflicting plugin: $conflict" }
@@ -26,7 +28,7 @@ foreach ($item in @(@('timing','Corrections'),@('playthrough','Debug'))) {
 }
 # The independent audit replaces the obsolete diagnostic bundle for this mode.
 # Preserve it in the same rollback manifest; never leave a dependency-error DLL.
-$outputs += @{Path=(Join-Path $plugins 'PRStutter.PlaythroughDiagnostics/PRStutter.PlaythroughDiagnostics.dll'); Remove=$true}
+$outputs += @{Path=(Join-Path $plugins 'PRStutter.PlaythroughDiagnostics/PRStutter.PlaythroughDiagnostics.dll'); RemoveFile=$true}
 $entries=@()
 foreach ($output in $outputs) {
     $previous=Test-Path -LiteralPath $output.Path
@@ -42,14 +44,8 @@ foreach ($output in $outputs) {
     $entry=$entries | Where-Object { $_.Path -eq $output.Path }
     if ((Test-Path -LiteralPath $output.Path) -ne $entry.Previous -or ($entry.Previous -and (Get-FileHash -LiteralPath $output.Path).Hash -ne $entry.PreviousHash)) { throw "File changed during build: $($output.Path)" }
     New-Item -ItemType Directory -Path (Split-Path $output.Path) -Force | Out-Null
-    if ($output.Remove) { if ($entry.Previous) { Remove-Item -LiteralPath $output.Path } }
-    elseif ($output.Source) { Copy-Item -LiteralPath $output.Source -Destination $output.Path -Force }
-    else { [IO.File]::WriteAllText($output.Path,$output.Text,[Text.UTF8Encoding]::new($false)) }
-    $entry.InstalledHash=if ($output.Remove) { 'ABSENT' } else { (Get-FileHash -LiteralPath $output.Path).Hash }
+    Install-ComparisonOutput -Output $output -Entry $entry
     $record | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifest
-    if ($output.Source -and $entry.InstalledHash -ne (Get-FileHash -LiteralPath $output.Source).Hash) { throw 'Installed DLL hash mismatch.' }
-    if ($output.Remove -and (Test-Path -LiteralPath $output.Path)) { throw 'Obsolete diagnostic DLL still present.' }
-    if (!$output.Remove -and !$output.Source -and [IO.File]::ReadAllText($output.Path) -ne $output.Text) { throw 'Installed configuration mismatch.' }
 }
 $record.Complete=$true
 $record | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifest
