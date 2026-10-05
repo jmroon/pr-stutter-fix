@@ -110,3 +110,56 @@ Unsupported scene families should suspend and eligible walking should resume.
 Report visible judder, visual changes, faults or failures to resume. Live scene
 classification, cinematic benefit, native CRT appearance, panel visibility and
 sampling overhead remain unverified until these captures are reviewed.
+
+## October 5 paired refresh measurement
+
+The user reports good walking and graceful resumption, but slight recurring
+judder at 165 Hz. Matched FFVI PresentMon/F8 runs used the existing 0.5.0 runtime,
+ordinary field area 9, 2560x1440 output and the native 320x180 field target.
+Timing logs confirm precision, pacing and manual timing stayed active throughout
+the sampled walking in both runs. No runtime changes were made for this test.
+
+| Evidence | 120 Hz run | 165 Hz run |
+| --- | --- | --- |
+| F8 samples / dropped rows | 1,803 / 0 | 2,474 / 0 |
+| Reported display interval, median outside F8 window | 8.3337 ms | 6.0669 ms |
+| Reported display interval, p99 outside F8 window | 8.3632 ms | 6.0921 ms |
+| Intervals above 1.5x median outside F8 window | 0 | 0 |
+| Eligible consecutive moving pairs | 1,546 | 2,111 |
+| Max displacement error against speed times Unity delta | 0.0000181 game units | 0.0000240 game units |
+| Tile crossings included in those pairs | 58 | 56 |
+
+Pair selection excludes the first/last recording second, frame gaps, identity
+changes, stopped/end-point frames, direction/speed changes and deltas >=25 ms.
+All admitted pairs had nominal speed 80 units/second; camera displacement matched
+player displacement within 0.002 units. This validates the sampled manual path,
+not every movement state, cinematic task or final rendered frame.
+
+Presentation spikes of about 100 ms (120 Hz) and 45 ms plus 9.76 ms (165 Hz)
+coincide with F8 startup. The comparison excludes one second on either side of
+F8 start/stop. Display intervals remain similarly steady inside the remaining
+F8 window and outside it. Measured observer-body medians were 0.0119/0.0097 ms;
+these exclude startup discovery, callback overhead and asynchronous saving.
+The 165 Hz run lost focus/quit near its end; transition margins exclude that tail.
+Both runs report composed GPU-GDI presentation: this is ETW evidence, not optical
+panel timing or proof that G-Sync was engaged.
+
+The remaining native raster grid is a hypothesis, not a measured final-pixel
+result. At 80 units/second and one field texel per unit, ideal 120 Hz sampling
+crosses pixel boundaries in alternating 1/2-frame holds. Ideal 165 Hz sampling
+mostly needs two frames per pixel, with an extra frame about every 0.2 seconds.
+Rounding the captured camera coordinates produces the corresponding change in
+hold distribution, but does not prove the game's actual pixel output. Variable
+Unity update intervals also remain visible despite steady display intervals;
+time-correct logical movement is not proof of equally spaced displayed motion.
+These results do not establish a mandatory multiple-of-60 simulation rate.
+Final-pixel evidence or a controlled stock-versus-finer-rendering test at 165 Hz
+would distinguish the remaining rendering/sampling hypotheses. The previous
+stock-versus-8x visual comparison at 120 Hz does not settle the 165 Hz case.
+
+Local evidence (ignored, contains game-derived recordings):
+
+- `artifacts/measurements/20261005-170226-320/`: 120 Hz ETW, motion and logs.
+- `artifacts/measurements/20261005-170547-571/`: 165 Hz ETW, motion and logs.
+- `artifacts/measurements/analyze-refresh-pair.py`: reproducible paired analysis.
+- `artifacts/measurements/refresh-comparison-20261005.json`: paired results.
