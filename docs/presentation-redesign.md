@@ -198,5 +198,9 @@ runtime follows from them.
 The separate [presentation adapter audit](presentation-audit.md) now observes
 the native visual-positioning boundary and records camera/map/entity predictions
 without applying corrections. It replaces neither the old smoothing algorithm
-nor its lifecycle. Live agreement remains pending; this is the next evidence
-gate before a replacement renderer.
+nor its lifecycle. The first FFIV capture now demonstrates exact native XY
+agreement for evaluated ordinary field camera/map/entity observations, including
+moving NPCs and intervals with a moving target and stationary camera. See the
+audit report for counts and exclusions. FFVI, looping maps and sustained
+scroll-dummy pans remain unverified; airship-view samples were excluded. Visual
+ownership and final rendering order remain separate gates before mutation.

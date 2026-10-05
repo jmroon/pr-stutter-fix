@@ -185,3 +185,18 @@ smoothing algorithm. Another guard-only patch is not the next experiment. See
 [presentation redesign](presentation-redesign.md) for native evidence from both
 games, the independent entity/camera model, offline checks and remaining gates.
 The research checkpoint changes no installed plugin or game configuration.
+
+## Independent presentation audit: first live agreement
+
+The subsequent read-only audit 0.1.0 was installed with corrections disabled.
+The October 4 castle/underground-overworld/airship capture has exact agreement
+in all evaluated comparisons: 863 camera, 863 map-scroll and 5,219 entity visual
+positions. Observations include four moving NPCs, different room dimensions and
+movement with a stationary camera, without scene-specific conditions. The audit
+continues across scene changes and resumes ordinary comparisons after landing.
+
+Airship alternate-view samples are excluded, not validated; sustained cinematic
+pans and looping maps are still untested. This supports the replacement model's
+ordinary field mapping, not the reliability of Grid 0.9.2 or a completed smoothing
+fix. See [the audit result](presentation-audit.md#first-ffiv-live-result-2026-10-04)
+for counts, overhead and remaining limits.

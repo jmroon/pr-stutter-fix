@@ -114,5 +114,48 @@ Both game profiles build and pass pure geometry/window checks and compiled
 dependency/mutation audits. Tests cover map boundaries, small maps, wrapping,
 offset order, layer scaling, exclusions, invalid values and timing bounds.
 The analyzer independently recomputes XY errors from recorded expected/observed
-values and never counts an excluded comparison as a match. Live hook execution
-and adapter agreement remain unverified until a new capture is available.
+values and never counts an excluded comparison as a match. The first FFIV live
+result is recorded below; FFVI live agreement remains pending.
+
+## First FFIV live result: 2026-10-04
+
+Capture `20261005-013702-692-722fc2ee.json` (UTC filename), produced by audit
+0.1.0 from checkpoint `ac8a949`, covers 60.008 seconds and 951 observations.
+The route starts in Dwarf Castle, visits the underground overworld and airship,
+then returns through several castle rooms. Corrections were disabled throughout.
+The analyzer reports `observed-checks-match`:
+
+| Comparison | Matches | Excluded | Maximum evaluated XY error |
+| --- | ---: | ---: | ---: |
+| Camera position | 863 | 88 | 0 game units |
+| Map scroll | 863 | 88 | 0 game units |
+| Entity visual position | 5,219 | 626 | 0 game units |
+
+Entity matches include 863 player, 3,741 NPC and 615 other-entity observations.
+Four distinct NPCs have detected movement across eight sampled pairs, all with
+matching visual positions. These are repeated observations, not entity counts.
+There are also 105 consecutive target/camera pairs where the target moves while
+the camera stays still. The shared mapping agrees across castle room dimensions
+of 29x18, 34x34 and 20x17 cells and the 144x144-cell overworld. Dimensions come
+from native state; no scene-ID conditions were added.
+
+All 88 excluded camera/map observations occur in alternate view 1 during the
+airship portion. The ordinary map is inactive there, so the earlier readiness
+gate reports `unready-map`; this does not establish airship rendering support.
+The same gate excludes 621 entity comparisons. The remaining five exclusions
+are scroll-dummy targets without a drawable root. Their camera/map comparisons
+match, but these are isolated transition samples, not a sustained cinematic pan.
+No observed map has looping enabled.
+
+The audit survives scene/target changes and resumes evaluated comparisons after
+landing, with no recorded fault or ring overwrite. Mean sampled observer cost
+is 0.073 ms; maximum is 14.706 ms. Only aggregate cost is recorded, so the peak
+cannot be attributed to startup or a specific transition. These values do not
+measure complete frame delivery or demonstrate imperceptible diagnostic cost.
+
+This establishes native XY agreement for the observed FFIV ordinary field
+behaviors. It does not validate fractional corrections, shadow/material ownership,
+final render ordering, timing repair, looping maps, sustained cinematic pans or
+FFVI. The next cross-title check is an equivalent short FFVI baseline capture;
+Ctrl+F11 can stop it as soon as the route is complete. Raw captures and local
+analysis remain in ignored `artifacts/ff4/presentation-audit-first/`.
