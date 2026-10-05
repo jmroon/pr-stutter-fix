@@ -1,58 +1,70 @@
 # Unrounded shared movement experiment
 
-Version 0.2.0 tests removing XY rounding at the movement source in the inspected
-FFIV/FFVI builds. This changes logical positions and is not yet a supported fix.
-It is separate from the proposed presentation replacement, old timing/grid
-corrections and read-only presentation audit. It adds an optional resolution-only
-8x comparison with no position compensation. No scene-ID conditions are used.
+Version 0.3.0 compares timing/pacing alone against timing/pacing plus the shared
+movement rounding bypass and resolution-only 8x. It changes logical positions
+in B and remains a temporary test, not a supported fix. No scene-ID conditions
+are used. The observer remains independent of all correction modules.
 
-## Controls and first comparison
+## Current coordinated comparison
 
-Install with the game closed:
+Install with both games closed, selecting each title separately:
 
 ```powershell
-./scripts/Deploy-UnroundedExperiment.ps1 -Game FFVI
-# Or -Game FFIV
+./scripts/Deploy-ComparisonExperiment.ps1 -Game FFVI
+./scripts/Deploy-ComparisonExperiment.ps1 -Game FFIV
 ```
 
-This installs the experiment and audit 0.1.2, backs up their previous DLLs and
-the affected configs, and leaves old corrections/debug recording disabled.
-Existing timing/grid DLLs and game/save files are not changed. The experiment
-starts OFF every launch; there is no persistent enable setting.
+The bundle installs Timing 0.6.3, Grid 0.9.2, UnroundedExperiment 0.3.0 and
+PresentationAudit 0.1.3. It backs up all four DLLs and both affected configs,
+including FFVI's older timing/grid binaries. Automatic corrections and ordinary
+debug recording remain disabled. The comparison always starts OFF.
 
-- **Shift+F11**: enable/disable unrounded movement. The panel displays ON/OFF.
-- **Alt+F11**: while movement is ON, switch between stock and 8x field resolution.
-  Turn CRT OFF first. The panel shows the resolution and completed render frames.
-- **Ctrl+F11**: start/stop the independent 60-second spatial recording.
-- The experiment restores its calls after 120 seconds, focus loss, quit or unload.
-- Keep F9/F10 off. The experiment refuses activation if the old correction
-  runtime is enabled or unreadable, and stops if that runtime becomes enabled.
-- F12 is unchanged. Shift+F11 can also reach the old F11 incident marker if someone
-  separately enables normal diagnostics; leave that recorder off for this test.
+- **Shift+F11:** start **A** or stop the comparison; maximum 120 seconds total.
+- **Alt+F11:** switch A/B without restarting timing/pacing or their deadline.
+- **A:** tile-time carry + scoped display-paced VSync, stock rounding/resolution.
+- **B:** the same carry/pacing + unrounded shared movement + resolution-only 8x.
+- **Ctrl+F11:** start/stop the independent 60-second audit.
+- Old camera/player compensation is OFF in both. F9 is blocked during the test;
+  leave F9/F10 off outside it. F12 is unchanged.
+- Any component stopping, loss of focus, timeout, quit or unload ends the whole
+  comparison. It never silently restarts or continues under a false A/B label.
 
-For the resolution comparison, turn CRT OFF, load an ordinary field area, press
-Shift+F11 to enable unrounded movement, then Ctrl+F11 to start the audit. Walk
-briefly at stock resolution; press Alt+F11 and confirm 8x with an increasing
-completed-frame count. Repeat the same walking/turning/stopping, then Alt+F11
-back to stock for another short comparison. Ctrl+F11 stops/saves. Stay in one
-area for this first comparison; there is no need to fill 60 seconds or repeat a
-cinematic. Use an existing save and avoid saving over it during the experiment.
+Turn CRT OFF and load an ordinary walking area. Press Shift+F11, confirm A,
+then Ctrl+F11. Walk the same stretch for roughly 10 seconds in A, press Alt+F11
+and repeat in B, then return to A for another 10 seconds. Ignore the immediate
+allocation/toggle hitch; compare steady walking. Watch for an increasing carried
+count in both modes and completed render frames in B. Ctrl+F11 saves;
+Shift+F11 stops. Stay in one area, away from encounters/cutscene triggers.
 
-Audit samples distinguish `unrounded-movement`, `unrounded-movement-8x` and
-`corrections-disabled`. The 8x label is a request state, not proof of rendering:
-`ResolutionCompletedFrames` records completed field-plus-compositor draws for
-the current activation, and the analyzer reports the maximum by condition.
-The analyzer reports comparisons and fractional logical positions by condition
-and entity role; it never counts an experiment sample as an unmodified baseline.
-Unknown/faulted experiment state excludes comparisons. The observer has no
-compile-time dependency on the experiment and performs no mutation.
+Timing now admits fractional positions and leaves the carried position unrounded
+only while B owns the comparison lease. Its normal rounded checks remain the
+default; native arrival approval, fresh input and collision guards are unchanged.
+No timing/smoothing algorithm is copied into the disposable experiment. A narrow
+reflection bridge starts/stops the existing timing and pacing components and
+reports actual state. Failed startup cleans up partial ownership; failed cleanup
+retains the lease and prevents automatic takeover.
 
-The comparison keeps the frame cap/VSync configuration unchanged. Larger targets
-can change GPU load; activation also performs discovery and allocation, so this
-does not promise unchanged frame delivery. Tile time loss and native sprite
-animation frame changes remain. Fractional observations identify whether the
-movement bypass ran. Gameplay and final pixels require live checks even when
-the position equations still match.
+Audit conditions are `timing-pacing` and `timing-pacing-unrounded-8x`.
+`comparison-invalid` is excluded. The live comparison contract checks actual
+component activity, native patch state, requested resolution and absence of old
+compensation; it does not rely on the previous frame's automatic status snapshot.
+`CarriedTiles` demonstrates timing work; the analyzer counts observed increases
+within each continuous condition, excluding switches/gaps. `ResolutionCompletedFrames`
+is execution evidence for field-plus-compositor draws, not proof of final pixels.
+Historical unrounded-only labels remain supported. No experimental condition is
+counted as an unmodified baseline. The 20 Hz audit cannot measure scanout judder.
+
+Pacing requests VSync count 1 and leaves the native targetFrameRate value alone,
+using the previously tested display-paced path. This is not a guarantee about
+VRR/driver presentation or a universal uncapped mode. B adds GPU load and startup
+allocation. This comparison closes the missing timing/pacing condition before
+rejecting the rounding-bypass direction. Live results are pending.
+
+Restore the complete pre-install bundle with
+`Restore-ComparisonExperiment.ps1 -Manifest <printed-path>` (game closed).
+It verifies file ownership and refuses to overwrite subsequent changes.
+The earlier installers/restorers remain for historical deployments; use the
+complete bundle for 0.3.0. See [the pre-offshoot checkpoint](offshoot-checkpoint.md).
 
 ## Resolution-only implementation
 

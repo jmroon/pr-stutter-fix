@@ -18,8 +18,12 @@ see the experiment report for measured coverage and unresolved limits.
 
 The subsequent resolution-only comparison also produced no reported noticeable
 improvement, despite 1,103 completed 8x draws across two activations and exact
-sampled camera/map/visual agreement. Pause further implementation of this branch
-until final-pixel and presentation-cadence evidence identifies what remains.
+sampled camera/map/visual agreement. Before moving to final-pixel and
+presentation-cadence diagnosis, the user requested one missing comparison:
+A = timing/pacing alone; B = the same timing/pacing with unrounded movement and
+resolution-only 8x, with old compensation disabled throughout. This coordinated
+test is implemented; live results are pending. The pre-offshoot rollback point
+is [preserved separately](offshoot-checkpoint.md).
 The earlier successful combined experiment included timing/pacing changes that
 were disabled in these comparisons; the results do not isolate compensation as
 the necessary difference. See the latest unrounded experiment report.

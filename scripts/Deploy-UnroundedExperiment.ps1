@@ -14,7 +14,7 @@ New-Item -ItemType Directory -Path $backup -Force | Out-Null
 $saved = Join-Path $backup 'PRStutter.UnroundedExperiment.dll'
 $previous = Test-Path -LiteralPath $target
 if ($previous) { Copy-Item -LiteralPath $target -Destination $saved }
-$entry = [ordered]@{Game=$Game; Version='0.2.0'; GitCommit=(git -C $testRoot rev-parse HEAD); Path=$target; Previous=$previous; Backup=$saved; PreviousHash=$(if($previous){(Get-FileHash -LiteralPath $target).Hash}else{$null}); InstalledHash=$null; AuditRestoreManifest=$null; Complete=$false; RuntimeVerified=$false}
+$entry = [ordered]@{Game=$Game; Version='0.3.0'; GitCommit=(git -C $testRoot rev-parse HEAD); Path=$target; Previous=$previous; Backup=$saved; PreviousHash=$(if($previous){(Get-FileHash -LiteralPath $target).Hash}else{$null}); InstalledHash=$null; AuditRestoreManifest=$null; Complete=$false; RuntimeVerified=$false}
 $manifest = Join-Path $backup 'manifest.json'
 $entry | ConvertTo-Json | Set-Content -LiteralPath $manifest
 # Reuse the audited installer for the independently versioned observer and baseline configs.
@@ -31,4 +31,4 @@ $entry | ConvertTo-Json | Set-Content -LiteralPath $manifest
 if ($entry.InstalledHash -ne (Get-FileHash -LiteralPath $source).Hash) { throw 'Installed experiment hash mismatch.' }
 $entry.Complete=$true
 $entry | ConvertTo-Json | Set-Content -LiteralPath $manifest
-Write-Host "$Game unrounded experiment 0.2.0 installed OFF. Shift+F11: movement; Alt+F11: resolution-only 8x (CRT OFF); Ctrl+F11: record. Restore manifest: $manifest"
+Write-Host "$Game unrounded experiment 0.3.0 installed OFF. Requires timing 0.6.3/grid 0.9.2: use Deploy-ComparisonExperiment.ps1 for the complete comparison. Restore manifest: $manifest"

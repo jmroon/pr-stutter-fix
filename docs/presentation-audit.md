@@ -1,9 +1,15 @@
 # Read-only presentation adapter audit
 
-Version 0.1.2 is an independent diagnostic plugin for the inspected FFIV and
+Version 0.1.3 is an independent diagnostic plugin for the inspected FFIV and
 FFVI builds. It does not replace or extend the correction runtime. The purpose
 is to check whether shared native position equations explain field rendering
 before implementing a new correction.
+
+Version 0.1.3 also admits the explicitly coordinated A/B experiment when its
+actual-state contract confirms timing/pacing active and old compensation off.
+It records carried-tile counts alongside requested resolution and completed
+render frames. Invalid/partial comparison states are excluded. See the
+[current comparison procedure](unrounded-movement-test.md).
 
 ## Capture
 

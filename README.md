@@ -1,12 +1,13 @@
 # Pixel Remaster stutter investigation
 
-**Current experiment:** [unrounded shared movement](docs/unrounded-movement-test.md)
-for FFIV/FFVI, OFF by default and toggled with Shift+F11. Alt+F11 adds/removes
-resolution-only 8x rendering while movement is ON (CRT OFF required). This tests
-movement precision and raster resolution with the older corrections disabled.
-Ctrl+F11 records the independent
-presentation audit. The automatic runtime described below remains an older
-experimental checkpoint with known transition problems.
+**Current experiment:** [coordinated A/B comparison](docs/unrounded-movement-test.md)
+for FFIV/FFVI, OFF by default. **Shift+F11** starts A or stops the test;
+**Alt+F11** switches A/B; **Ctrl+F11** records. A = timing + display pacing.
+B = the same timing/pacing plus unrounded shared movement and resolution-only
+8x rendering. CRT OFF; old camera/player compensation stays OFF in both.
+Install the complete bundle with `scripts/Deploy-ComparisonExperiment.ps1`.
+[Rollback checkpoint and retained findings](docs/offshoot-checkpoint.md).
+The automatic runtime below is an older experiment with known transition problems.
 
 Experimental Windows modding project investigating movement judder in **Final
 Fantasy VI Pixel Remaster**. The current development build automatically manages
@@ -18,7 +19,7 @@ have targeted live evidence. The new automatic lifecycle and playthrough debug
 mode pass offline checks but still require in-game transition and overhead checks.
 Unknown cinematic/battle/camera layouts suspend unsupported corrections.
 
-Current components: **Timing 0.6.2**, **Grid 0.9.2**, optional **Playthrough
+Current components: **Timing 0.6.3**, **Grid 0.9.2**, optional **Playthrough
 Diagnostics 0.2.2**. F9 enables/disables automatic corrections; F10 toggles debug
 recording; F11 marks an incident. Smoothing requires CRT off. Debug recording is
 optional and cannot gate correction behavior.
